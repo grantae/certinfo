@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"io/ioutil"
-	"os"
 	"testing"
 )
 
@@ -58,7 +57,6 @@ func testPair(t *testing.T, certFile, refFile string, inputType InputType) {
 	if !bytes.Equal(resultData, refData) {
 		t.Logf("'%s' did not match reference '%s'\n", certFile, refFile)
 		t.Errorf("Dump follows:\n%s\n", result)
-		os.Stderr.WriteString(result)
 	}
 }
 
