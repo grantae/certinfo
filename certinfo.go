@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net"
 	"time"
 )
 
@@ -116,36 +117,22 @@ func dsaKeyPrinter(name string, val *big.Int, buf *bytes.Buffer) {
 	buf.WriteString("\n")
 }
 
-// CertificateText returns a human-readable string representation
-// of the certificate cert. The format is similar (but not identical)
-// to the OpenSSL way of printing certificates.
-func CertificateText(cert *x509.Certificate) (string, error) {
-	var buf bytes.Buffer
-	buf.Grow(4096) // 4KiB should be enough
+func printVersion(version int, buf *bytes.Buffer) {
+	hexVersion := version - 1
+	if hexVersion < 0 {
+		hexVersion = 0
+	}
+	buf.WriteString(fmt.Sprintf("%8sVersion: %d (%#x)\n", "", version, hexVersion))
+}
 
-	buf.WriteString(fmt.Sprintf("Certificate:\n"))
-	buf.WriteString(fmt.Sprintf("%4sData:\n", ""))
-	buf.WriteString(fmt.Sprintf("%8sVersion: %d (%#x)\n", "", cert.Version, cert.Version-1))
-	buf.WriteString(fmt.Sprintf("%8sSerial Number: %d (%#x)\n", "", cert.SerialNumber, cert.SerialNumber))
-	buf.WriteString(fmt.Sprintf("%4sSignature Algorithm: %s\n", "", cert.SignatureAlgorithm))
-
-	// Issuer information
-	buf.WriteString(fmt.Sprintf("%8sIssuer: ", ""))
-	printName(cert.Issuer.Names, &buf)
-
-	// Validity information
-	buf.WriteString(fmt.Sprintf("%8sValidity\n", ""))
-	buf.WriteString(fmt.Sprintf("%12sNot Before: %s\n", "", cert.NotBefore.Format("Jan 2 15:04:05 2006 MST")))
-	buf.WriteString(fmt.Sprintf("%12sNot After : %s\n", "", cert.NotAfter.Format("Jan 2 15:04:05 2006 MST")))
-
-	// Subject information
+func printSubjectInformation(subj *pkix.Name, pkAlgo x509.PublicKeyAlgorithm, pk interface{}, buf *bytes.Buffer) error {
 	buf.WriteString(fmt.Sprintf("%8sSubject: ", ""))
-	printName(cert.Subject.Names, &buf)
+	printName(subj.Names, buf)
 	buf.WriteString(fmt.Sprintf("%8sSubject Public Key Info:\n%12sPublic Key Algorithm: ", "", ""))
-	switch cert.PublicKeyAlgorithm {
+	switch pkAlgo {
 	case x509.RSA:
 		buf.WriteString(fmt.Sprintf("RSA\n"))
-		if rsaKey, ok := cert.PublicKey.(*rsa.PublicKey); ok {
+		if rsaKey, ok := pk.(*rsa.PublicKey); ok {
 			buf.WriteString(fmt.Sprintf("%16sPublic-Key: (%d bit)\n", "", rsaKey.N.BitLen()))
 			// Some implementations (notably OpenSSL) prepend 0x00 to the modulus
 			// if its most-significant bit is set. There is no need to do that here
@@ -163,31 +150,133 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 			}
 			buf.WriteString(fmt.Sprintf("\n%16sExponent: %d (%#x)\n", "", rsaKey.E, rsaKey.E))
 		} else {
-			return "", errors.New("certinfo: Expected rsa.PublicKey for type x509.RSA")
+			return errors.New("certinfo: Expected rsa.PublicKey for type x509.RSA")
 		}
 	case x509.DSA:
 		buf.WriteString(fmt.Sprintf("DSA\n"))
-		if dsaKey, ok := cert.PublicKey.(*dsa.PublicKey); ok {
-			dsaKeyPrinter("pub", dsaKey.Y, &buf)
-			dsaKeyPrinter("P", dsaKey.P, &buf)
-			dsaKeyPrinter("Q", dsaKey.Q, &buf)
-			dsaKeyPrinter("G", dsaKey.G, &buf)
+		if dsaKey, ok := pk.(*dsa.PublicKey); ok {
+			dsaKeyPrinter("pub", dsaKey.Y, buf)
+			dsaKeyPrinter("P", dsaKey.P, buf)
+			dsaKeyPrinter("Q", dsaKey.Q, buf)
+			dsaKeyPrinter("G", dsaKey.G, buf)
 		} else {
-			return "", errors.New("certinfo: Expected dsa.PublicKey for type x509.DSA")
+			return errors.New("certinfo: Expected dsa.PublicKey for type x509.DSA")
 		}
 	case x509.ECDSA:
 		buf.WriteString(fmt.Sprintf("ECDSA\n"))
-		if ecdsaKey, ok := cert.PublicKey.(*ecdsa.PublicKey); ok {
+		if ecdsaKey, ok := pk.(*ecdsa.PublicKey); ok {
 			buf.WriteString(fmt.Sprintf("%16sPublic-Key: (%d bit)\n", "", ecdsaKey.Params().BitSize))
-			dsaKeyPrinter("X", ecdsaKey.X, &buf)
-			dsaKeyPrinter("Y", ecdsaKey.Y, &buf)
+			dsaKeyPrinter("X", ecdsaKey.X, buf)
+			dsaKeyPrinter("Y", ecdsaKey.Y, buf)
 			buf.WriteString(fmt.Sprintf("%16sCurve: %s\n", "", ecdsaKey.Params().Name))
 		} else {
-			return "", errors.New("certinfo: Expected ecdsa.PublicKey for type x509.DSA")
+			return errors.New("certinfo: Expected ecdsa.PublicKey for type x509.DSA")
 		}
 	default:
-		return "", errors.New("certinfo: Unknown public key type")
+		return errors.New("certinfo: Unknown public key type")
 	}
+	return nil
+}
+
+func printSubjKeyId(ext pkix.Extension, buf *bytes.Buffer) error {
+	// subjectKeyIdentifier: RFC 5280, 4.2.1.2
+	buf.WriteString(fmt.Sprintf("%12sX509v3 Subject Key Identifier:", ""))
+	if ext.Critical {
+		buf.WriteString(" critical\n")
+	} else {
+		buf.WriteString("\n")
+	}
+	var subjectKeyId []byte
+	if _, err := asn1.Unmarshal(ext.Value, &subjectKeyId); err != nil {
+		return err
+	}
+	for i := 0; i < len(subjectKeyId); i++ {
+		if i == 0 {
+			buf.WriteString(fmt.Sprintf("%16s%02X", "", subjectKeyId[0]))
+		} else {
+			buf.WriteString(fmt.Sprintf(":%02X", subjectKeyId[i]))
+		}
+	}
+	buf.WriteString("\n")
+	return nil
+}
+
+func printSubjAltNames(ext pkix.Extension, dnsNames []string, emailAddresses []string, ipAddresses []net.IP, buf *bytes.Buffer) error {
+	// subjectAltName: RFC 5280, 4.2.1.6
+	// TODO: Currently crypto/x509 only extracts DNS, email, and IP addresses.
+	// We should add the others to it or implement them here.
+	buf.WriteString(fmt.Sprintf("%12sX509v3 Subject Alternative Name:", ""))
+	if ext.Critical {
+		buf.WriteString(" critical\n")
+	} else {
+		buf.WriteString("\n")
+	}
+	if len(dnsNames) > 0 {
+		buf.WriteString(fmt.Sprintf("%16sDNS:%s", "", dnsNames[0]))
+		for i := 1; i < len(dnsNames); i++ {
+			buf.WriteString(fmt.Sprintf(", DNS:%s", dnsNames[i]))
+		}
+		buf.WriteString("\n")
+	}
+	if len(emailAddresses) > 0 {
+		buf.WriteString(fmt.Sprintf("%16semail:%s", "", emailAddresses[0]))
+		for i := 1; i < len(emailAddresses); i++ {
+			buf.WriteString(fmt.Sprintf(", email:%s", emailAddresses[i]))
+		}
+		buf.WriteString("\n")
+	}
+	if len(ipAddresses) > 0 {
+		buf.WriteString(fmt.Sprintf("%16sIP Address:%s", "", ipAddresses[0].String())) // XXX verify string format
+		for i := 1; i < len(ipAddresses); i++ {
+			buf.WriteString(fmt.Sprintf(", IP Address:%s", ipAddresses[i].String()))
+		}
+		buf.WriteString("\n")
+	}
+	return nil
+}
+
+func printSignature(sigAlgo x509.SignatureAlgorithm, sig []byte, buf *bytes.Buffer) {
+	buf.WriteString(fmt.Sprintf("%4sSignature Algorithm: %s", "", sigAlgo))
+	for i, val := range sig {
+		if (i % 18) == 0 {
+			buf.WriteString(fmt.Sprintf("\n%9s", ""))
+		}
+		buf.WriteString(fmt.Sprintf("%02x", val))
+		if i != len(sig)-1 {
+			buf.WriteString(":")
+		}
+	}
+	buf.WriteString("\n")
+}
+
+// CertificateText returns a human-readable string representation
+// of the certificate cert. The format is similar (but not identical)
+// to the OpenSSL way of printing certificates.
+func CertificateText(cert *x509.Certificate) (string, error) {
+	var buf bytes.Buffer
+	buf.Grow(4096) // 4KiB should be enough
+
+	buf.WriteString(fmt.Sprintf("Certificate:\n"))
+	buf.WriteString(fmt.Sprintf("%4sData:\n", ""))
+	printVersion(cert.Version, &buf)
+	buf.WriteString(fmt.Sprintf("%8sSerial Number: %d (%#x)\n", "", cert.SerialNumber, cert.SerialNumber))
+	buf.WriteString(fmt.Sprintf("%4sSignature Algorithm: %s\n", "", cert.SignatureAlgorithm))
+
+	// Issuer information
+	buf.WriteString(fmt.Sprintf("%8sIssuer: ", ""))
+	printName(cert.Issuer.Names, &buf)
+
+	// Validity information
+	buf.WriteString(fmt.Sprintf("%8sValidity\n", ""))
+	buf.WriteString(fmt.Sprintf("%12sNot Before: %s\n", "", cert.NotBefore.Format("Jan 2 15:04:05 2006 MST")))
+	buf.WriteString(fmt.Sprintf("%12sNot After : %s\n", "", cert.NotAfter.Format("Jan 2 15:04:05 2006 MST")))
+
+	// Subject information
+	err := printSubjectInformation(&cert.Subject, cert.PublicKeyAlgorithm, cert.PublicKey, &buf)
+	if err != nil {
+		return "", err
+	}
+
 	// Issuer/Subject Unique ID, typically used in old v2 certificates
 	issuerUID, subjectUID, err := certUniqueIDs(cert.RawTBSCertificate)
 	if err != nil {
@@ -207,6 +296,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 		}
 		buf.WriteString("\n")
 	}
+
 	// Optional extensions for X509v3
 	if cert.Version == 3 && len(cert.Extensions) > 0 {
 		buf.WriteString(fmt.Sprintf("%8sX509v3 extensions:\n", ""))
@@ -214,21 +304,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 			if len(ext.Id) == 4 && ext.Id[0] == 2 && ext.Id[1] == 5 && ext.Id[2] == 29 {
 				switch ext.Id[3] {
 				case 14:
-					// subjectKeyIdentifier: RFC 5280, 4.2.1.2
-					buf.WriteString(fmt.Sprintf("%12sX509v3 Subject Key Identifier:", ""))
-					if ext.Critical {
-						buf.WriteString(" critical\n")
-					} else {
-						buf.WriteString("\n")
-					}
-					for i := 0; i < len(cert.SubjectKeyId); i++ {
-						if i == 0 {
-							buf.WriteString(fmt.Sprintf("%16s%02X", "", cert.SubjectKeyId[0]))
-						} else {
-							buf.WriteString(fmt.Sprintf(":%02X", cert.SubjectKeyId[i]))
-						}
-					}
-					buf.WriteString("\n")
+					err = printSubjKeyId(ext, &buf)
 				case 15:
 					// keyUsage: RFC 5280, 4.2.1.3
 					buf.WriteString(fmt.Sprintf("%12sX509v3 Key Usage:", ""))
@@ -275,36 +351,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 						buf.WriteString(fmt.Sprintf("%16sNone\n", ""))
 					}
 				case 17:
-					// subjectAltName: RFC 5280, 4.2.1.6
-					// TODO: Currently crypto/x509 only extracts DNS, email, and IP addresses.
-					// We should add the others to it or implement them here.
-					buf.WriteString(fmt.Sprintf("%12sX509v3 Subject Alternative Name:", ""))
-					if ext.Critical {
-						buf.WriteString(" critical\n")
-					} else {
-						buf.WriteString("\n")
-					}
-					if len(cert.DNSNames) > 0 {
-						buf.WriteString(fmt.Sprintf("%16sDNS:%s", "", cert.DNSNames[0]))
-						for i := 1; i < len(cert.DNSNames); i++ {
-							buf.WriteString(fmt.Sprintf(", DNS:%s", cert.DNSNames[i]))
-						}
-						buf.WriteString("\n")
-					}
-					if len(cert.EmailAddresses) > 0 {
-						buf.WriteString(fmt.Sprintf("%16semail:%s", "", cert.EmailAddresses[0]))
-						for i := 1; i < len(cert.EmailAddresses); i++ {
-							buf.WriteString(fmt.Sprintf(", email:%s", cert.EmailAddresses[i]))
-						}
-						buf.WriteString("\n")
-					}
-					if len(cert.IPAddresses) > 0 {
-						buf.WriteString(fmt.Sprintf("%16sIP Address:%s", "", cert.IPAddresses[0].String())) // XXX verify string format
-						for i := 1; i < len(cert.IPAddresses); i++ {
-							buf.WriteString(fmt.Sprintf(", IP Address:%s", cert.IPAddresses[i].String()))
-						}
-						buf.WriteString("\n")
-					}
+					err = printSubjAltNames(ext, cert.DNSNames, cert.EmailAddresses, cert.IPAddresses, &buf)
 				case 19:
 					// basicConstraints: RFC 5280, 4.2.1.9
 					if !cert.BasicConstraintsValid {
@@ -434,6 +481,9 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				default:
 					buf.WriteString(fmt.Sprintf("Unknown extension 2.5.29.%d\n", ext.Id[3]))
 				}
+				if err != nil {
+					return "", err
+				}
 			} else if ext.Id.Equal(oidExtensionAuthorityInfoAccess) {
 				// authorityInfoAccess: RFC 5280, 4.2.2.1
 				buf.WriteString(fmt.Sprintf("%12sAuthority Information Access:", ""))
@@ -475,19 +525,9 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 		}
 		buf.WriteString("\n")
 	}
-	// Signature Algorithm
-	buf.WriteString(fmt.Sprintf("%4sSignature Algorithm: %s", "", cert.SignatureAlgorithm))
-	// Signature Value
-	for i, val := range cert.Signature {
-		if (i % 18) == 0 {
-			buf.WriteString(fmt.Sprintf("\n%9s", ""))
-		}
-		buf.WriteString(fmt.Sprintf("%02x", val))
-		if i != len(cert.Signature)-1 {
-			buf.WriteString(":")
-		}
-	}
-	buf.WriteString("\n")
+
+	// Signature
+	printSignature(cert.SignatureAlgorithm, cert.Signature, &buf)
 
 	// Optional: Print the full PEM certificate
 	/*
@@ -497,6 +537,49 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 		}
 		buf.Write(pem.EncodeToMemory(&pemBlock))
 	*/
+
+	return buf.String(), nil
+}
+
+// CertificateRequestText returns a human-readable string representation
+// of the certificate request csr. The format is similar (but not identical)
+// to the OpenSSL way of printing certificates.
+func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
+	var buf bytes.Buffer
+	buf.Grow(4096) // 4KiB should be enough
+
+	buf.WriteString(fmt.Sprintf("Certificate Request:\n"))
+	buf.WriteString(fmt.Sprintf("%4sData:\n", ""))
+	printVersion(csr.Version, &buf)
+
+	// Subject information
+	err := printSubjectInformation(&csr.Subject, csr.PublicKeyAlgorithm, csr.PublicKey, &buf)
+	if err != nil {
+		return "", err
+	}
+
+	// Optional extensions for X509v3
+	if csr.Version == 3 && len(csr.Extensions) > 0 {
+		buf.WriteString(fmt.Sprintf("%8sRequested Extensions:\n", ""))
+		var err error
+		for _, ext := range csr.Extensions {
+			if len(ext.Id) == 4 && ext.Id[0] == 2 && ext.Id[1] == 5 && ext.Id[2] == 29 {
+				switch ext.Id[3] {
+				case 14:
+					err = printSubjKeyId(ext, &buf)
+				case 17:
+					err = printSubjAltNames(ext, csr.DNSNames, csr.EmailAddresses, csr.IPAddresses, &buf)
+				}
+			}
+			if err != nil {
+				return "", err
+			}
+		}
+		buf.WriteString("\n")
+	}
+
+	// Signature
+	printSignature(csr.SignatureAlgorithm, csr.Signature, &buf)
 
 	return buf.String(), nil
 }

@@ -1,0 +1,21 @@
+Certificate Request:
+    Data:
+        Version: 0 (0x0)
+        Subject: C=ZA,ST=Gauteng,UnknownOID=2.5.4.7,O=Sub-Saharan Widgets Corporation,OU=21st Century Department,CN=subsaharanwidgets.com,emailAddress=nobody@subsaharanwidgets.com
+        Subject Public Key Info:
+            Public Key Algorithm: ECDSA
+                Public-Key: (256 bit)
+                X:
+                    84:25:d6:a2:d0:91:8a:0b:9d:7e:82:51:29:29:fc:
+                    61:d7:31:00:d9:31:62:39:1c:0a:72:65:20:94:d8:
+                    c0:28
+                Y:
+                    60:03:44:db:e4:e8:42:2e:a5:e4:36:ff:2d:13:12:
+                    b7:c2:9c:a8:af:10:2d:af:07:02:ba:08:7f:37:ce:
+                    1f:bc
+                Curve: P-256
+    Signature Algorithm: ECDSA-SHA256
+         30:44:02:20:45:2f:6c:0e:7f:43:cb:0c:f5:ab:cc:7a:17:ca:
+         3c:4d:ef:3d:63:82:ee:95:9b:c8:ae:27:3c:58:de:9e:31:15:
+         02:20:01:5d:4b:60:a3:8f:d3:65:8f:60:1b:98:0d:a9:55:1b:
+         a7:c5:0c:ee:a2:73:fa:e5:0e:f8:e3:e5:29:a7:0e:30
