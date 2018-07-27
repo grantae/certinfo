@@ -5,7 +5,6 @@ import (
 	"crypto/dsa"
 	"crypto/ecdsa"
 	"crypto/rsa"
-	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"errors"
@@ -13,6 +12,9 @@ import (
 	"math/big"
 	"net"
 	"time"
+
+	"github.com/smallstep/cli/pkg/x509"
+	"golang.org/x/crypto/ed25519"
 )
 
 // Extra ASN1 OIDs that we may need to handle
@@ -171,6 +173,40 @@ func printSubjectInformation(subj *pkix.Name, pkAlgo x509.PublicKeyAlgorithm, pk
 			buf.WriteString(fmt.Sprintf("%16sCurve: %s\n", "", ecdsaKey.Params().Name))
 		} else {
 			return errors.New("certinfo: Expected ecdsa.PublicKey for type x509.DSA")
+		}
+	case x509.ED25519:
+		buf.WriteString(fmt.Sprintf("Ed25519\n"))
+		if ed25519Key, ok := pk.(ed25519.PublicKey); ok {
+			bytes := []byte(ed25519Key)
+			buf.WriteString(fmt.Sprintf("%16sPublic-Key: (%d bit)\n", "", len(bytes)))
+			buf.WriteString(fmt.Sprintf("%20s", ""))
+			for i, b := range bytes {
+				if i == 0 {
+					buf.WriteString(fmt.Sprintf("%02x", b))
+				} else {
+					buf.WriteString(fmt.Sprintf(":%02x", b))
+				}
+			}
+			buf.WriteString(fmt.Sprintf("\n"))
+		} else {
+			return errors.New("certinfo: Expected ed25519.PublicKey for type x509.ED25519")
+		}
+	case x509.X25519:
+		buf.WriteString(fmt.Sprintf("x25519\n"))
+		if x25519Key, ok := pk.(x509.X25519PublicKey); ok {
+			bytes := []byte(x25519Key)
+			buf.WriteString(fmt.Sprintf("%16sPublic-Key: (%d bit)\n", "", len(bytes)))
+			buf.WriteString(fmt.Sprintf("%20s", ""))
+			for i, b := range bytes {
+				if i == 0 {
+					buf.WriteString(fmt.Sprintf("%02x", b))
+				} else {
+					buf.WriteString(fmt.Sprintf(":%02x", b))
+				}
+			}
+			buf.WriteString(fmt.Sprintf("\n"))
+		} else {
+			return errors.New("certinfo: Expected x25519PublicKey for type x509.X25519")
 		}
 	default:
 		return errors.New("certinfo: Unknown public key type")
