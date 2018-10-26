@@ -7,11 +7,12 @@ import (
 	"crypto/rsa"
 	"crypto/x509/pkix"
 	"encoding/asn1"
-	"errors"
 	"fmt"
 	"math/big"
 	"net"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/smallstep/cli/pkg/x509"
 	"golang.org/x/crypto/ed25519"
@@ -22,11 +23,18 @@ var (
 	oidEmailAddress                 = []int{1, 2, 840, 113549, 1, 9, 1}
 	oidExtensionAuthorityInfoAccess = []int{1, 3, 6, 1, 5, 5, 7, 1, 1}
 	oidNSComment                    = []int{2, 16, 840, 1, 113730, 1, 13}
+	oidStepProvisioner              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64, 1}
 )
 
 // validity allows unmarshaling the certificate validity date range
 type validity struct {
 	NotBefore, NotAfter time.Time
+}
+
+type stepProvisioner struct {
+	Type         int
+	Name         []byte
+	CredentialID []byte
 }
 
 // publicKeyInfo allows unmarshaling the public key
@@ -555,6 +563,28 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				} else {
 					buf.WriteString(fmt.Sprintf("%12sNetscape Comment:\n%16s%s\n", "", "", comment))
 				}
+			} else if ext.Id.Equal(oidStepProvisioner) {
+				buf.WriteString(fmt.Sprintf("%12sX509v3 Step Provisioner:", ""))
+				if ext.Critical {
+					buf.WriteString(" critical\n")
+				} else {
+					buf.WriteString("\n")
+				}
+				val := &stepProvisioner{}
+				rest, err := asn1.Unmarshal(ext.Value, val)
+				if err != nil || len(rest) > 0 {
+					return "", errors.New("certinfo: Error parsing OID " + ext.Id.String())
+				}
+				var typ string
+				switch val.Type {
+				case 1:
+					typ = "JWK"
+				default:
+					return "", errors.Errorf("certinfo: Unexpected step provisioner type %d", val.Type)
+				}
+				buf.WriteString(fmt.Sprintf("%16sType: %s\n", "", typ))
+				buf.WriteString(fmt.Sprintf("%16sName: %s\n", "", string(val.Name)))
+				buf.WriteString(fmt.Sprintf("%16sCredentialID: %s\n", "", string(val.CredentialID)))
 			} else {
 				buf.WriteString(fmt.Sprintf("%12sUnknown extension %s\n", "", ext.Id.String()))
 			}
