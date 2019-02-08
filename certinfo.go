@@ -7,23 +7,29 @@ import (
 	"crypto/rsa"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/base64"
 	"fmt"
 	"math/big"
 	"net"
 	"time"
 
 	"github.com/pkg/errors"
-
 	"github.com/smallstep/cli/pkg/x509"
 	"golang.org/x/crypto/ed25519"
+
+	ct "github.com/google/certificate-transparency-go"
+	cttls "github.com/google/certificate-transparency-go/tls"
+	ctx509 "github.com/google/certificate-transparency-go/x509"
+	ctutil "github.com/google/certificate-transparency-go/x509util"
 )
 
 // Extra ASN1 OIDs that we may need to handle
 var (
-	oidEmailAddress                 = []int{1, 2, 840, 113549, 1, 9, 1}
-	oidExtensionAuthorityInfoAccess = []int{1, 3, 6, 1, 5, 5, 7, 1, 1}
-	oidNSComment                    = []int{2, 16, 840, 1, 113730, 1, 13}
-	oidStepProvisioner              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64, 1}
+	oidEmailAddress                   = []int{1, 2, 840, 113549, 1, 9, 1}
+	oidExtensionAuthorityInfoAccess   = []int{1, 3, 6, 1, 5, 5, 7, 1, 1}
+	oidNSComment                      = []int{2, 16, 840, 1, 113730, 1, 13}
+	oidStepProvisioner                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64, 1}
+	oidSignedCertificateTimestampList = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 11129, 2, 4, 2}
 )
 
 // validity allows unmarshaling the certificate validity date range
@@ -287,6 +293,24 @@ func printSignature(sigAlgo x509.SignatureAlgorithm, sig []byte, buf *bytes.Buff
 		}
 		buf.WriteString(fmt.Sprintf("%02x", val))
 		if i != len(sig)-1 {
+			buf.WriteString(":")
+		}
+	}
+	buf.WriteString("\n")
+}
+
+func toBase64(b []byte) string {
+	return base64.StdEncoding.EncodeToString(b)
+}
+
+func printSCTSignature(sig ct.DigitallySigned, buf *bytes.Buffer) {
+	buf.WriteString(fmt.Sprintf("%20sSignature Algorithm: %s-%s", "", sig.Algorithm.Hash, sig.Algorithm.Signature))
+	for i, val := range sig.Signature {
+		if (i % 18) == 0 {
+			buf.WriteString(fmt.Sprintf("\n%22s", ""))
+		}
+		buf.WriteString(fmt.Sprintf("%02x", val))
+		if i != len(sig.Signature)-1 {
 			buf.WriteString(":")
 		}
 	}
@@ -585,8 +609,36 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				buf.WriteString(fmt.Sprintf("%16sType: %s\n", "", typ))
 				buf.WriteString(fmt.Sprintf("%16sName: %s\n", "", string(val.Name)))
 				buf.WriteString(fmt.Sprintf("%16sCredentialID: %s\n", "", string(val.CredentialID)))
-			} else {
-				buf.WriteString(fmt.Sprintf("%12sUnknown extension %s\n", "", ext.Id.String()))
+			} else if ext.Id.Equal(oidSignedCertificateTimestampList) {
+				buf.WriteString(fmt.Sprintf("%12sRFC6962 Certificate Transparency SCT:", ""))
+				if ext.Critical {
+					buf.WriteString(" critical\n")
+				} else {
+					buf.WriteString("\n")
+				}
+				var raw []byte
+				rest, err := asn1.Unmarshal(ext.Value, &raw)
+				if err != nil || len(rest) > 0 {
+					return "", errors.New("certinfo: Error parsing OID " + ext.Id.String())
+				}
+				var sctList ctx509.SignedCertificateTimestampList
+				if rest, err := cttls.Unmarshal(raw, &sctList); err != nil || len(rest) > 0 {
+					return "", errors.New("certinfo: Error parsing OID " + ext.Id.String())
+				}
+				scts, err := ctutil.ParseSCTsFromSCTList(&sctList)
+				if err != nil {
+					return "", errors.New("certinfo: Error parsing OID " + ext.Id.String())
+				}
+
+				for i, sct := range scts {
+					buf.WriteString(fmt.Sprintf("%16sSCT [%d]:\n", "", i))
+					buf.WriteString(fmt.Sprintf("%20sVersion: %d\n", "", sct.SCTVersion))
+					buf.WriteString(fmt.Sprintf("%20sLogID: %s\n", "", toBase64(sct.LogID.KeyID[:])))
+					buf.WriteString(fmt.Sprintf("%20sTimestamp: %d\n", "", sct.Timestamp))
+					// There are no available extensions
+					// buf.WriteString(fmt.Sprintf("%20sExtensions: %v\n", "", sct.Extensions))
+					printSCTSignature(sct.Signature, &buf)
+				}
 			}
 		}
 		buf.WriteString("\n")
