@@ -632,7 +632,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 
 				for i, sct := range scts {
 					buf.WriteString(fmt.Sprintf("%16sSCT [%d]:\n", "", i))
-					buf.WriteString(fmt.Sprintf("%20sVersion: %d\n", "", sct.SCTVersion))
+					buf.WriteString(fmt.Sprintf("%20sVersion: %s\n", "", sct.SCTVersion))
 					buf.WriteString(fmt.Sprintf("%20sLogID: %s\n", "", toBase64(sct.LogID.KeyID[:])))
 					buf.WriteString(fmt.Sprintf("%20sTimestamp: %d\n", "", sct.Timestamp))
 					// There are no available extensions
