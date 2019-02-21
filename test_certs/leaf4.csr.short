@@ -1,0 +1,5 @@
+X.509v3 Certificate Signing Request (ECDSA P-256)
+  Subject:     The Router
+               router.example.com
+               bastion.example.com
+               192.168.1.1

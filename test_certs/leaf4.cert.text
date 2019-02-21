@@ -1,0 +1,40 @@
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number: 265869080288155511757422126858285293665 (0xc80485b58ad2926553dc3374f5532061)
+    Signature Algorithm: ECDSA-SHA256
+        Issuer: CN=Smallstep Root CA
+        Validity
+            Not Before: Feb 21 21:24:02 2019 UTC
+            Not After : Feb 22 21:24:02 2019 UTC
+        Subject: CN=The Router
+        Subject Public Key Info:
+            Public Key Algorithm: ECDSA
+                Public-Key: (256 bit)
+                X:
+                    6c:b0:6e:60:9e:d6:6c:04:2b:fa:e7:ce:9d:a9:a8:
+                    52:d1:ee:3c:a3:43:43:87:e5:ee:ea:cb:67:60:bf:
+                    8a:f6
+                Y:
+                    a1:35:bf:ed:9d:ff:27:a4:4d:fc:4d:ed:10:44:2e:
+                    ba:d0:a9:be:53:c4:c0:23:f5:85:76:da:62:f9:4b:
+                    6f:f2
+                Curve: P-256
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Digital Signature, Key Encipherment
+            X509v3 Extended Key Usage:
+                TLS Web Server Authentication, TLS Web Client Authentication
+            X509v3 Subject Key Identifier:
+                66:52:36:55:36:A8:43:9C:41:89:62:6B:57:D4:6B:A6:47:3B:F4:F5
+            X509v3 Authority Key Identifier:
+                keyid:17:8F:7C:D2:64:44:F1:C4:20:31:14:D5:06:25:03:D8:AF:BD:49:0B
+            X509v3 Subject Alternative Name:
+                DNS:router.example.com, DNS:bastion.example.com
+                IP Address:192.168.1.1
+
+    Signature Algorithm: ECDSA-SHA256
+         30:46:02:21:00:ed:8c:d4:03:8e:84:0c:56:ad:0b:7b:86:56:
+         5b:c6:7c:87:65:49:78:cf:e2:e3:6a:bf:ca:88:93:39:19:ed:
+         08:02:21:00:b4:7c:21:27:a6:01:0c:98:66:bf:0c:3b:54:ab:
+         84:dc:14:99:5d:ca:d3:3a:f0:65:64:63:1e:02:a2:78:af:cd
