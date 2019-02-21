@@ -16,7 +16,7 @@ const (
 	tCertificateRequest
 )
 
-// Compares a PEM-encoded certificate to a refernce file.
+// Compares a PEM-encoded certificate to a reference file.
 func testPair(t *testing.T, certFile, refFile string, inputType InputType) {
 	// Read and parse the certificate
 	pemData, err := ioutil.ReadFile(certFile)
@@ -61,7 +61,7 @@ func testPair(t *testing.T, certFile, refFile string, inputType InputType) {
 	}
 }
 
-// Compares a PEM-encoded certificate to a refernce file.
+// Compares a PEM-encoded certificate to a reference file.
 func testPairShort(t *testing.T, certFile, refFile string, inputType InputType) {
 	// Read and parse the certificate
 	pemData, err := ioutil.ReadFile(certFile)

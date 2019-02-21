@@ -194,5 +194,5 @@ func abbreviated(s string) string {
 	if l <= 8 {
 		return s
 	}
-	return s[0:4] + "..." + s[l-4:]
+	return s[:4] + "..." + s[l-4:]
 }
