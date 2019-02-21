@@ -317,6 +317,18 @@ func printSCTSignature(sig ct.DigitallySigned, buf *bytes.Buffer) {
 	buf.WriteString("\n")
 }
 
+// CertificateShortText returns the human-readable string representation of the
+// given cert using a short and friendly format.
+func CertificateShortText(cert *x509.Certificate) (string, error) {
+	return newCertificateShort(cert).String(), nil
+}
+
+// CertificateRequestShortText returns the human-readable string representation
+// of the given certificate request using a short and friendly format.
+func CertificateRequestShortText(cr *x509.CertificateRequest) (string, error) {
+	return newCertificateRequestShort(cr).String(), nil
+}
+
 // CertificateText returns a human-readable string representation
 // of the certificate cert. The format is similar (but not identical)
 // to the OpenSSL way of printing certificates.
