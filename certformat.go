@@ -7,6 +7,8 @@ import (
 	"crypto/rsa"
 	"encoding/asn1"
 	"fmt"
+	"net"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -59,7 +61,7 @@ func newCertificateShort(cert *x509.Certificate) *certificateShort {
 		SerialNumber:       abbreviated(cert.SerialNumber.String()),
 		Subject:            cert.Subject.CommonName,
 		Issuer:             cert.Issuer.CommonName,
-		SANs:               getSANs(cert),
+		SANs:               getSANs(cert.Subject.CommonName, cert.DNSNames, cert.IPAddresses, cert.EmailAddresses, cert.URIs),
 		Provisioner:        getProvisioner(cert),
 		NotBefore:          cert.NotBefore,
 		NotAfter:           cert.NotAfter,
@@ -90,31 +92,10 @@ type certificateRequestShort struct {
 }
 
 func newCertificateRequestShort(cr *x509.CertificateRequest) *certificateRequestShort {
-	var sans []string
-	for _, s := range cr.DNSNames {
-		if s != cr.Subject.CommonName {
-			sans = append(sans, s)
-		}
-	}
-	for _, ip := range cr.IPAddresses {
-		if s := ip.String(); s != cr.Subject.CommonName {
-			sans = append(sans, s)
-		}
-	}
-	for _, s := range cr.EmailAddresses {
-		if s != cr.Subject.CommonName {
-			sans = append(sans, s)
-		}
-	}
-	for _, uri := range cr.URIs {
-		if s := uri.String(); s != cr.Subject.CommonName {
-			sans = append(sans, s)
-		}
-	}
 	return &certificateRequestShort{
 		PublicKeyAlgorithm: getPublicKeyAlgorithm(cr.PublicKeyAlgorithm, cr.PublicKey),
 		Subject:            cr.Subject.CommonName,
-		SANs:               sans,
+		SANs:               getSANs(cr.Subject.CommonName, cr.DNSNames, cr.IPAddresses, cr.EmailAddresses, cr.URIs),
 	}
 }
 
@@ -129,25 +110,25 @@ func (c *certificateRequestShort) String() string {
 	return buf.String()
 }
 
-func getSANs(cert *x509.Certificate) []string {
+func getSANs(commonName string, dnsNames []string, ipAddresses []net.IP, emailAddresses []string, uris []*url.URL) []string {
 	var sans []string
-	for _, s := range cert.DNSNames {
-		if s != cert.Subject.CommonName {
+	for _, s := range dnsNames {
+		if s != commonName {
 			sans = append(sans, s)
 		}
 	}
-	for _, ip := range cert.IPAddresses {
-		if s := ip.String(); s != cert.Subject.CommonName {
+	for _, ip := range ipAddresses {
+		if s := ip.String(); s != commonName {
 			sans = append(sans, s)
 		}
 	}
-	for _, s := range cert.EmailAddresses {
-		if s != cert.Subject.CommonName {
+	for _, s := range emailAddresses {
+		if s != commonName {
 			sans = append(sans, s)
 		}
 	}
-	for _, uri := range cert.URIs {
-		if s := uri.String(); s != cert.Subject.CommonName {
+	for _, uri := range uris {
+		if s := uri.String(); s != commonName {
 			sans = append(sans, s)
 		}
 	}
