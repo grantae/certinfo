@@ -1,0 +1,21 @@
+Certificate Request:
+    Data:
+        Version: 0 (0x0)
+        Subject: CN=The Router
+        Subject Public Key Info:
+            Public Key Algorithm: ECDSA
+                Public-Key: (256 bit)
+                X:
+                    6c:b0:6e:60:9e:d6:6c:04:2b:fa:e7:ce:9d:a9:a8:
+                    52:d1:ee:3c:a3:43:43:87:e5:ee:ea:cb:67:60:bf:
+                    8a:f6
+                Y:
+                    a1:35:bf:ed:9d:ff:27:a4:4d:fc:4d:ed:10:44:2e:
+                    ba:d0:a9:be:53:c4:c0:23:f5:85:76:da:62:f9:4b:
+                    6f:f2
+                Curve: P-256
+    Signature Algorithm: ECDSA-SHA256
+         30:46:02:21:00:fb:f5:29:60:25:b2:02:cc:d9:c6:e0:64:78:
+         b8:47:07:e4:76:d1:30:40:06:92:57:96:21:e2:1f:f0:1f:25:
+         01:02:21:00:c3:ba:80:24:7a:b1:64:98:f8:bf:b2:04:44:00:
+         5c:da:4e:44:8d:d2:1c:f0:1a:9c:f7:20:c1:51:17:7c:e5:82

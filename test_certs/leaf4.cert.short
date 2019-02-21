@@ -1,0 +1,8 @@
+X.509v3 TLS Certificate (ECDSA P-256) [Serial: 2658...3665]
+  Subject:     The Router
+               router.example.com
+               bastion.example.com
+               192.168.1.1
+  Issuer:      Smallstep Root CA
+  Valid from:  2019-02-21T21:24:02Z
+          to:  2019-02-22T21:24:02Z

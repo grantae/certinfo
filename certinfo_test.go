@@ -137,3 +137,11 @@ func TestCertInfoLeaf3(t *testing.T) {
 	testPairShort(t, "test_certs/leaf3.cert.pem", "test_certs/leaf3.cert.short", tCertificate)
 	testPairShort(t, "test_certs/leaf3.csr.pem", "test_certs/leaf3.csr.short", tCertificateRequest)
 }
+
+// Test the leaf (user) with multiple sans
+func TestCertInfoLeaf4(t *testing.T) {
+	testPair(t, "test_certs/leaf4.cert.pem", "test_certs/leaf4.cert.text", tCertificate)
+	testPair(t, "test_certs/leaf4.csr.pem", "test_certs/leaf4.csr.text", tCertificateRequest)
+	testPairShort(t, "test_certs/leaf4.cert.pem", "test_certs/leaf4.cert.short", tCertificate)
+	testPairShort(t, "test_certs/leaf4.csr.pem", "test_certs/leaf4.csr.short", tCertificateRequest)
+}
