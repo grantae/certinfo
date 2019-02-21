@@ -84,7 +84,6 @@ func (c *certificateShort) String() string {
 }
 
 type certificateRequestShort struct {
-	Type               string
 	PublicKeyAlgorithm string
 	Subject            string
 	SANs               []string
@@ -113,7 +112,6 @@ func newCertificateRequestShort(cr *x509.CertificateRequest) *certificateRequest
 		}
 	}
 	return &certificateRequestShort{
-		Type:               "",
 		PublicKeyAlgorithm: getPublicKeyAlgorithm(cr.PublicKeyAlgorithm, cr.PublicKey),
 		Subject:            cr.Subject.CommonName,
 		SANs:               sans,
