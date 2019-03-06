@@ -615,6 +615,8 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				switch val.Type {
 				case 1:
 					typ = "JWK"
+				case 2:
+					typ = "OIDC"
 				default:
 					return "", errors.Errorf("certinfo: Unexpected step provisioner type %d", val.Type)
 				}
