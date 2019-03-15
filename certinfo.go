@@ -93,6 +93,8 @@ func printName(names []pkix.AttributeTypeAndValue, buf *bytes.Buffer) []string {
 				values = append(values, fmt.Sprintf("CN=%s", name.Value))
 			case 6:
 				values = append(values, fmt.Sprintf("C=%s", name.Value))
+			case 7:
+				values = append(values, fmt.Sprintf("L=%s", name.Value))
 			case 8:
 				values = append(values, fmt.Sprintf("ST=%s", name.Value))
 			case 10:
@@ -618,7 +620,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				case 2:
 					typ = "OIDC"
 				default:
-					return "", errors.Errorf("certinfo: Unexpected step provisioner type %d", val.Type)
+					typ = fmt.Sprintf("%d (unknown)", val.Type)
 				}
 				buf.WriteString(fmt.Sprintf("%16sType: %s\n", "", typ))
 				buf.WriteString(fmt.Sprintf("%16sName: %s\n", "", string(val.Name)))
