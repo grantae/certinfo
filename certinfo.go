@@ -692,8 +692,8 @@ func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
 		return "", err
 	}
 
-	// Optional extensions for X509v3
-	if csr.Version == 3 && len(csr.Extensions) > 0 {
+	// Optional extensions for PKCS #10, RFC 2986
+	if csr.Version == 0 && len(csr.Extensions) > 0 {
 		buf.WriteString(fmt.Sprintf("%8sRequested Extensions:\n", ""))
 		var err error
 		for _, ext := range csr.Extensions {
