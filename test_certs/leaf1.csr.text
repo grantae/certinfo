@@ -1,7 +1,7 @@
 Certificate Request:
     Data:
         Version: 0 (0x0)
-        Subject: C=AU,ST=Victoria,UnknownOID=2.5.4.7,O=Southern Widgets Corporation,OU=21st Century Department,CN=southernwidgets.com,emailAddress=nobody@southernwidgets.com
+        Subject: C=AU,ST=Victoria,L=Melbourne,O=Southern Widgets Corporation,OU=21st Century Department,CN=southernwidgets.com,emailAddress=nobody@southernwidgets.com
         Subject Public Key Info:
             Public Key Algorithm: RSA
                 Public-Key: (512 bit)
@@ -12,6 +12,7 @@ Certificate Request:
                     48:01:fb:15:30:ce:c6:f1:13:df:76:83:5a:d6:a2:
                     fc:4a:27:87
                 Exponent: 65537 (0x10001)
+
     Signature Algorithm: SHA256-RSA
          26:26:07:7f:3f:11:08:44:9c:97:36:d7:de:75:8c:9f:6d:48:
          a1:55:e0:d1:5f:d3:6c:d2:7c:78:9b:4c:d7:87:81:57:bb:3f:

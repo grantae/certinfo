@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -21,6 +22,12 @@ import (
 	cttls "github.com/google/certificate-transparency-go/tls"
 	ctx509 "github.com/google/certificate-transparency-go/x509"
 	ctutil "github.com/google/certificate-transparency-go/x509util"
+)
+
+// Time formats used
+const (
+	validityTimeFormat = "Jan 2 15:04:05 2006 MST"
+	sctTimeFormat      = "Jan 2 15:04:05.000 2006 MST"
 )
 
 // Extra ASN1 OIDs that we may need to handle
@@ -38,9 +45,10 @@ type validity struct {
 }
 
 type stepProvisioner struct {
-	Type         int
-	Name         []byte
-	CredentialID []byte
+	Type          int
+	Name          []byte
+	CredentialID  []byte
+	KeyValuePairs []string `asn1:"optional,omitempty"`
 }
 
 // publicKeyInfo allows unmarshaling the public key
@@ -350,8 +358,8 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 
 	// Validity information
 	buf.WriteString(fmt.Sprintf("%8sValidity\n", ""))
-	buf.WriteString(fmt.Sprintf("%12sNot Before: %s\n", "", cert.NotBefore.Format("Jan 2 15:04:05 2006 MST")))
-	buf.WriteString(fmt.Sprintf("%12sNot After : %s\n", "", cert.NotAfter.Format("Jan 2 15:04:05 2006 MST")))
+	buf.WriteString(fmt.Sprintf("%12sNot Before: %s\n", "", cert.NotBefore.Format(validityTimeFormat)))
+	buf.WriteString(fmt.Sprintf("%12sNot After : %s\n", "", cert.NotAfter.Format(validityTimeFormat)))
 
 	// Subject information
 	err := printSubjectInformation(&cert.Subject, cert.PublicKeyAlgorithm, cert.PublicKey, &buf)
@@ -486,11 +494,11 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 						buf.WriteString("\n")
 					}
 					if len(cert.CRLDistributionPoints) > 0 {
-						buf.WriteString(fmt.Sprintf("\n%16sFull Name:\n%18sURI:%s", "", "", cert.CRLDistributionPoints[0]))
+						buf.WriteString(fmt.Sprintf("%16sFull Name:\n%18sURI:%s", "", "", cert.CRLDistributionPoints[0]))
 						for i := 1; i < len(cert.CRLDistributionPoints); i++ {
 							buf.WriteString(fmt.Sprintf(", URI:%s", cert.CRLDistributionPoints[i]))
 						}
-						buf.WriteString("\n\n")
+						buf.WriteString("\n")
 					}
 				case 32:
 					// certificatePoliciesExt: RFC 5280, 4.2.1.4
@@ -588,7 +596,6 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					}
 					buf.WriteString("\n")
 				}
-				buf.WriteString("\n")
 			} else if ext.Id.Equal(oidNSComment) {
 				// Netscape comment
 				var comment string
@@ -631,6 +638,14 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				buf.WriteString(fmt.Sprintf("%16sType: %s\n", "", typ))
 				buf.WriteString(fmt.Sprintf("%16sName: %s\n", "", string(val.Name)))
 				buf.WriteString(fmt.Sprintf("%16sCredentialID: %s\n", "", string(val.CredentialID)))
+				var key, value string
+				for i, l := 0, len(val.KeyValuePairs); i < l; i += 2 {
+					key, value = val.KeyValuePairs[i], "-"
+					if i+1 < l {
+						value = val.KeyValuePairs[i+1]
+					}
+					buf.WriteString(fmt.Sprintf("%16s%s: %s\n", "", key, value))
+				}
 			} else if ext.Id.Equal(oidSignedCertificateTimestampList) {
 				buf.WriteString(fmt.Sprintf("%12sRFC6962 Certificate Transparency SCT:", ""))
 				if ext.Critical {
@@ -653,14 +668,33 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				}
 
 				for i, sct := range scts {
+					sec := int64(sct.Timestamp / 1000)
+					nsec := int64(sct.Timestamp % 1000)
 					buf.WriteString(fmt.Sprintf("%16sSCT [%d]:\n", "", i))
-					buf.WriteString(fmt.Sprintf("%20sVersion: %s\n", "", sct.SCTVersion))
+					buf.WriteString(fmt.Sprintf("%20sVersion: %s (%#x)\n", "", sct.SCTVersion, int64(sct.SCTVersion)))
 					buf.WriteString(fmt.Sprintf("%20sLogID: %s\n", "", toBase64(sct.LogID.KeyID[:])))
-					buf.WriteString(fmt.Sprintf("%20sTimestamp: %d\n", "", sct.Timestamp))
+					buf.WriteString(fmt.Sprintf("%20sTimestamp: %s\n", "", time.Unix(sec, nsec*1e6).UTC().Format(sctTimeFormat)))
 					// There are no available extensions
 					// buf.WriteString(fmt.Sprintf("%20sExtensions: %v\n", "", sct.Extensions))
 					printSCTSignature(sct.Signature, &buf)
 				}
+			} else {
+				buf.WriteString(fmt.Sprintf("%12s%s:", "", ext.Id.String()))
+				if ext.Critical {
+					buf.WriteString(" critical\n")
+				} else {
+					buf.WriteString("\n")
+				}
+				value := bytes.Runes(ext.Value)
+				sanitized := make([]rune, len(value))
+				for i, r := range value {
+					if strconv.IsPrint(r) && r != '�' {
+						sanitized[i] = r
+					} else {
+						sanitized[i] = '.'
+					}
+				}
+				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(sanitized)))
 			}
 		}
 		buf.WriteString("\n")
@@ -715,6 +749,8 @@ func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
 				return "", err
 			}
 		}
+		buf.WriteString("\n")
+	} else {
 		buf.WriteString("\n")
 	}
 
