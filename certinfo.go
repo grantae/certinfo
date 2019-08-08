@@ -639,7 +639,9 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				}
 				buf.WriteString(fmt.Sprintf("%16sType: %s\n", "", typ))
 				buf.WriteString(fmt.Sprintf("%16sName: %s\n", "", string(val.Name)))
-				buf.WriteString(fmt.Sprintf("%16sCredentialID: %s\n", "", string(val.CredentialID)))
+				if len(val.CredentialID) != 0 {
+					buf.WriteString(fmt.Sprintf("%16sCredentialID: %s\n", "", string(val.CredentialID)))
+				}
 				var key, value string
 				for i, l := 0, len(val.KeyValuePairs); i < l; i += 2 {
 					key, value = val.KeyValuePairs[i], "-"
