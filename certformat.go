@@ -78,7 +78,12 @@ func (c *certificateShort) String() string {
 	}
 	buf.Writef("  Issuer:      %s\n", c.Issuer)
 	if c.Provisioner != nil {
-		buf.Writef("  Provisioner: %s [ID: %s]\n", c.Provisioner.Name, c.Provisioner.ID)
+		if len(c.Provisioner.ID) == 0 {
+			buf.Writef("  Provisioner: %s\n", c.Provisioner.Name)
+		} else {
+			buf.Writef("  Provisioner: %s [ID: %s]\n", c.Provisioner.Name, c.Provisioner.ID)
+		}
+
 	}
 	buf.Writef("  Valid from:  %s\n", c.NotBefore.Format(time.RFC3339))
 	buf.Writef("          to:  %s\n", c.NotAfter.Format(time.RFC3339))
