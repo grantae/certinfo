@@ -634,6 +634,8 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					typ = "Azure"
 				case 6:
 					typ = "ACME"
+				case 7:
+					typ = "X5C"
 				default:
 					typ = fmt.Sprintf("%d (unknown)", val.Type)
 				}
