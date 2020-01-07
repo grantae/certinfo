@@ -4,16 +4,15 @@ import (
 	"bytes"
 	"crypto/dsa"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rsa"
+	"crypto/x509"
 	"encoding/asn1"
 	"fmt"
 	"net"
 	"net/url"
 	"strconv"
 	"time"
-
-	"github.com/smallstep/cli/pkg/x509"
-	"golang.org/x/crypto/ed25519"
 )
 
 // formatBuffer is a helper to write using sprintf.

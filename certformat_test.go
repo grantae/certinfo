@@ -1,13 +1,12 @@
 package certinfo
 
 import (
+	"crypto/x509"
 	"encoding/pem"
 	"io/ioutil"
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/smallstep/cli/pkg/x509"
 )
 
 func Test_newCertificateShort(t *testing.T) {

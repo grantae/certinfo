@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"crypto/dsa"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rsa"
+	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/base64"
@@ -14,14 +16,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pkg/errors"
-	"github.com/smallstep/cli/pkg/x509"
-	"golang.org/x/crypto/ed25519"
-
 	ct "github.com/google/certificate-transparency-go"
 	cttls "github.com/google/certificate-transparency-go/tls"
 	ctx509 "github.com/google/certificate-transparency-go/x509"
 	ctutil "github.com/google/certificate-transparency-go/x509util"
+	"github.com/pkg/errors"
 )
 
 // Time formats used
@@ -198,39 +197,23 @@ func printSubjectInformation(subj *pkix.Name, pkAlgo x509.PublicKeyAlgorithm, pk
 		} else {
 			return errors.New("certinfo: Expected ecdsa.PublicKey for type x509.DSA")
 		}
-	case x509.ED25519:
+	case x509.Ed25519:
 		buf.WriteString(fmt.Sprintf("Ed25519\n"))
 		if ed25519Key, ok := pk.(ed25519.PublicKey); ok {
 			bytes := []byte(ed25519Key)
-			buf.WriteString(fmt.Sprintf("%16sPublic-Key: (%d bit)\n", "", len(bytes)))
-			buf.WriteString(fmt.Sprintf("%20s", ""))
+			buf.WriteString(fmt.Sprintf("%16sPublic-Key: (%d bit)", "", len(bytes)))
 			for i, b := range bytes {
-				if i == 0 {
-					buf.WriteString(fmt.Sprintf("%02x", b))
-				} else {
-					buf.WriteString(fmt.Sprintf(":%02x", b))
+				if (i % 15) == 0 {
+					buf.WriteString(fmt.Sprintf("\n%20s", ""))
+				}
+				buf.WriteString(fmt.Sprintf("%02x", b))
+				if i != len(bytes)-1 {
+					buf.WriteString(":")
 				}
 			}
-			buf.WriteString(fmt.Sprintf("\n"))
+			buf.WriteString("\n")
 		} else {
 			return errors.New("certinfo: Expected ed25519.PublicKey for type x509.ED25519")
-		}
-	case x509.X25519:
-		buf.WriteString(fmt.Sprintf("x25519\n"))
-		if x25519Key, ok := pk.(x509.X25519PublicKey); ok {
-			bytes := []byte(x25519Key)
-			buf.WriteString(fmt.Sprintf("%16sPublic-Key: (%d bit)\n", "", len(bytes)))
-			buf.WriteString(fmt.Sprintf("%20s", ""))
-			for i, b := range bytes {
-				if i == 0 {
-					buf.WriteString(fmt.Sprintf("%02x", b))
-				} else {
-					buf.WriteString(fmt.Sprintf(":%02x", b))
-				}
-			}
-			buf.WriteString(fmt.Sprintf("\n"))
-		} else {
-			return errors.New("certinfo: Expected x25519PublicKey for type x509.X25519")
 		}
 	default:
 		return errors.New("certinfo: Unknown public key type")
@@ -705,7 +688,6 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(sanitized)))
 			}
 		}
-		buf.WriteString("\n")
 	}
 
 	// Signature
@@ -757,9 +739,6 @@ func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
 				return "", err
 			}
 		}
-		buf.WriteString("\n")
-	} else {
-		buf.WriteString("\n")
 	}
 
 	// Signature

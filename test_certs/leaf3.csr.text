@@ -14,7 +14,6 @@ Certificate Request:
                     b7:c2:9c:a8:af:10:2d:af:07:02:ba:08:7f:37:ce:
                     1f:bc
                 Curve: P-256
-
     Signature Algorithm: ECDSA-SHA256
          30:45:02:20:10:3a:61:7d:86:47:e7:51:ba:66:3f:14:a7:cb:
          b7:e9:37:be:b9:22:8e:6b:ff:24:be:91:b9:50:4e:15:35:2d:

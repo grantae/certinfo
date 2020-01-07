@@ -25,7 +25,6 @@ Certificate Request:
                     71:bc:10:a6:45:dd:a0:55:e1:77:02:28:84:58:09:
                     da:f9:ad:16:6e:22:3f:13:f7:91:71:44:5b:5f:98:
                     8c:92:21:13
-
     Signature Algorithm: DSA-SHA256
          30:2c:02:14:6e:2f:4d:43:42:fe:ef:dd:d6:5d:82:ce:40:35:
          0f:df:f6:03:d0:56:02:14:2c:af:8d:a5:7e:00:cb:18:c9:eb:

@@ -29,7 +29,6 @@ Certificate:
                 01:27:7C:0E:46:3D:5B:DA:40:EF:37:5B:B6:B4:4A:30:58:A8:4C:76
             X509v3 Authority Key Identifier:
                 keyid:7C:0F:26:9D:ED:C8:7A:C0:05:1E:99:A3:5D:A5:9E:8D:A6:A6:96:5E
-
     Signature Algorithm: SHA256-RSA
          4c:66:23:bd:22:0d:20:f4:d1:ce:ad:f6:55:ff:9e:6c:e5:fb:
          09:08:e6:2f:ad:a7:db:85:67:a8:d5:c6:1c:83:6c:8f:68:7c:

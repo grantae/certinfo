@@ -32,7 +32,6 @@ Certificate:
             X509v3 Subject Alternative Name:
                 DNS:router.example.com, DNS:bastion.example.com
                 IP Address:192.168.1.1
-
     Signature Algorithm: ECDSA-SHA256
          30:46:02:21:00:ed:8c:d4:03:8e:84:0c:56:ad:0b:7b:86:56:
          5b:c6:7c:87:65:49:78:cf:e2:e3:6a:bf:ca:88:93:39:19:ed:

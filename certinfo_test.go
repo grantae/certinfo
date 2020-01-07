@@ -2,11 +2,10 @@ package certinfo
 
 import (
 	"bytes"
+	"crypto/x509"
 	"encoding/pem"
 	"io/ioutil"
 	"testing"
-
-	"github.com/smallstep/cli/pkg/x509"
 )
 
 type InputType int
