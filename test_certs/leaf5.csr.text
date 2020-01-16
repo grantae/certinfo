@@ -1,0 +1,29 @@
+Certificate Request:
+    Data:
+        Version: 0 (0x0)
+        Subject: C=ZA,ST=Gauteng,L=Pretoria,O=Sub-Saharan Widgets Corporation,OU=21st Century Department,CN=subsaharanwidgets.com,emailAddress=nobody@subsaharanwidgets.com,UID=testuser,DC=Test Domain Component
+        Subject Public Key Info:
+            Public Key Algorithm: ECDSA
+                Public-Key: (521 bit)
+                X:
+                    01:26:ad:fe:34:63:28:8e:b6:6f:7f:1e:bc:4a:d8:
+                    72:c9:31:c4:66:60:35:42:7f:06:3a:78:74:de:9a:
+                    54:f5:5e:71:63:02:b8:e3:27:3c:77:06:98:ca:bb:
+                    02:df:2b:fa:17:b7:b5:0c:d3:2b:84:01:45:c3:ca:
+                    b4:b4:69:a7:49:d1
+                Y:
+                    bb:b2:b2:fe:1c:fe:8c:a2:ec:07:2c:18:e4:4a:b7:
+                    52:1b:99:9d:06:f5:d2:d1:a8:49:fb:18:53:99:34:
+                    d4:0d:d2:2b:56:0f:1a:04:34:26:83:d7:b0:9f:d8:
+                    2f:bc:70:75:54:64:21:98:fd:3b:9f:db:f3:b1:f5:
+                    73:74:69:25:35
+                Curve: P-521
+    Signature Algorithm: ECDSA-SHA256
+         30:81:88:02:42:00:b3:74:b8:9f:c6:1d:9e:17:03:fc:86:2a:
+         0b:a3:92:7a:f7:82:39:92:45:fd:9e:cf:4a:0d:33:ba:90:1e:
+         ea:f4:92:14:d7:a4:37:7f:9d:26:f4:7f:36:0e:2f:41:68:a0:
+         fb:9e:9b:6f:76:bc:e4:d0:cc:98:66:4f:73:79:e7:03:03:02:
+         42:01:87:6a:a9:9e:ba:4a:c4:8c:76:49:77:46:7b:29:fa:16:
+         ed:52:c0:73:10:99:b9:f9:98:1b:0a:20:21:56:ad:a4:f1:1e:
+         44:a9:b8:e3:75:24:14:fa:2a:df:34:e5:95:5e:c8:49:22:3c:
+         f6:e8:cc:35:aa:c9:71:79:49:63:b3:9f:62
