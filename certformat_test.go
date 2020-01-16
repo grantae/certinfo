@@ -54,6 +54,15 @@ func Test_newCertificateShort(t *testing.T) {
 			NotBefore:          mustParseTime(t, "2020-07-23T18:56:47Z"),
 			NotAfter:           mustParseTime(t, "2040-06-30T07:37:21Z"),
 		}},
+		{"leaf5", args{"test_certs/leaf5.cert.pem"}, &certificateShort{
+			Type:               "TLS",
+			SerialNumber:       "1",
+			PublicKeyAlgorithm: "ECDSA P-521",
+			Subject:            "subsaharanwidgets.com",
+			Issuer:             "worldwidgetauthority.com",
+			NotBefore:          mustParseTime(t, "2020-07-23T18:56:47Z"),
+			NotAfter:           mustParseTime(t, "2040-06-30T07:37:21Z"),
+		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -88,6 +97,10 @@ func Test_newCertificateRequestShort(t *testing.T) {
 		}},
 		{"leaf3", args{"test_certs/leaf3.csr.pem"}, &certificateRequestShort{
 			PublicKeyAlgorithm: "ECDSA P-256",
+			Subject:            "subsaharanwidgets.com",
+		}},
+		{"leaf5", args{"test_certs/leaf5.csr.pem"}, &certificateRequestShort{
+			PublicKeyAlgorithm: "ECDSA P-521",
 			Subject:            "subsaharanwidgets.com",
 		}},
 	}

@@ -144,3 +144,10 @@ func TestCertInfoLeaf4(t *testing.T) {
 	testPairShort(t, "test_certs/leaf4.cert.pem", "test_certs/leaf4.cert.short", tCertificate)
 	testPairShort(t, "test_certs/leaf4.csr.pem", "test_certs/leaf4.csr.short", tCertificateRequest)
 }
+
+func TestCertInfoLeaf5(t *testing.T) {
+	testPair(t, "test_certs/leaf5.cert.pem", "test_certs/leaf5.cert.text", tCertificate)
+	testPair(t, "test_certs/leaf5.csr.pem", "test_certs/leaf5.csr.text", tCertificateRequest)
+	testPairShort(t, "test_certs/leaf5.cert.pem", "test_certs/leaf5.cert.short", tCertificate)
+	testPairShort(t, "test_certs/leaf5.csr.pem", "test_certs/leaf5.csr.short", tCertificateRequest)
+}

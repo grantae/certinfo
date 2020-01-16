@@ -120,7 +120,7 @@ func printName(names []pkix.AttributeTypeAndValue, buf *bytes.Buffer) []string {
 				values = append(values, fmt.Sprintf("UnknownOID=%s", name.Type.String()))
 			}
 		} else if oid.Equal(oidEmailAddress) {
-			values = append(values, fmt.Sprintf("MAIL=%s", name.Value))
+			values = append(values, fmt.Sprintf("emailAddress=%s", name.Value))
 		} else if oid.Equal(oidDomainComponent) {
 			values = append(values, fmt.Sprintf("DC=%s", name.Value))
 		} else if oid.Equal(oidUserID) {
