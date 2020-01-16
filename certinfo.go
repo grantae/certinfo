@@ -32,6 +32,8 @@ const (
 // Extra ASN1 OIDs that we may need to handle
 var (
 	oidEmailAddress                   = []int{1, 2, 840, 113549, 1, 9, 1}
+	oidDomainComponent                = []int{0, 9, 2342, 19200300, 100, 1, 25}
+	oidUserID                         = []int{0, 9, 2342, 19200300, 100, 1, 1}
 	oidExtensionAuthorityInfoAccess   = []int{1, 3, 6, 1, 5, 5, 7, 1, 1}
 	oidNSComment                      = []int{2, 16, 840, 1, 113730, 1, 13}
 	oidStepProvisioner                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64, 1}
@@ -98,21 +100,31 @@ func printName(names []pkix.AttributeTypeAndValue, buf *bytes.Buffer) []string {
 			switch oid[3] {
 			case 3:
 				values = append(values, fmt.Sprintf("CN=%s", name.Value))
+			case 5:
+				values = append(values, fmt.Sprintf("SERIALNUMBER=%s", name.Value))
 			case 6:
 				values = append(values, fmt.Sprintf("C=%s", name.Value))
 			case 7:
 				values = append(values, fmt.Sprintf("L=%s", name.Value))
 			case 8:
 				values = append(values, fmt.Sprintf("ST=%s", name.Value))
+			case 9:
+				values = append(values, fmt.Sprintf("STREET=%s", name.Value))
 			case 10:
 				values = append(values, fmt.Sprintf("O=%s", name.Value))
 			case 11:
 				values = append(values, fmt.Sprintf("OU=%s", name.Value))
+			case 17:
+				values = append(values, fmt.Sprintf("POSTALCODE=%s", name.Value))
 			default:
 				values = append(values, fmt.Sprintf("UnknownOID=%s", name.Type.String()))
 			}
 		} else if oid.Equal(oidEmailAddress) {
-			values = append(values, fmt.Sprintf("emailAddress=%s", name.Value))
+			values = append(values, fmt.Sprintf("MAIL=%s", name.Value))
+		} else if oid.Equal(oidDomainComponent) {
+			values = append(values, fmt.Sprintf("DC=%s", name.Value))
+		} else if oid.Equal(oidUserID) {
+			values = append(values, fmt.Sprintf("UID=%s", name.Value))
 		} else {
 			values = append(values, fmt.Sprintf("UnknownOID=%s", name.Type.String()))
 		}
