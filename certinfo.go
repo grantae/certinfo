@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -256,7 +257,7 @@ func printSubjKeyId(ext pkix.Extension, buf *bytes.Buffer) error {
 	return nil
 }
 
-func printSubjAltNames(ext pkix.Extension, dnsNames []string, emailAddresses []string, ipAddresses []net.IP, buf *bytes.Buffer) error {
+func printSubjAltNames(ext pkix.Extension, dnsNames []string, emailAddresses []string, ipAddresses []net.IP, uris []*url.URL, buf *bytes.Buffer) error {
 	// subjectAltName: RFC 5280, 4.2.1.6
 	// TODO: Currently crypto/x509 only extracts DNS, email, and IP addresses.
 	// We should add the others to it or implement them here.
@@ -284,6 +285,13 @@ func printSubjAltNames(ext pkix.Extension, dnsNames []string, emailAddresses []s
 		buf.WriteString(fmt.Sprintf("%16sIP Address:%s", "", ipAddresses[0].String())) // XXX verify string format
 		for i := 1; i < len(ipAddresses); i++ {
 			buf.WriteString(fmt.Sprintf(", IP Address:%s", ipAddresses[i].String()))
+		}
+		buf.WriteString("\n")
+	}
+	if len(uris) > 0 {
+		buf.WriteString(fmt.Sprintf("%16sURI:%s", "", uris[0].String()))
+		for i := 1; i < len(uris); i++ {
+			buf.WriteString(fmt.Sprintf(", URI:%s", uris[i].String()))
 		}
 		buf.WriteString("\n")
 	}
@@ -436,7 +444,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 						buf.WriteString(fmt.Sprintf("%16sNone\n", ""))
 					}
 				case 17:
-					err = printSubjAltNames(ext, cert.DNSNames, cert.EmailAddresses, cert.IPAddresses, &buf)
+					err = printSubjAltNames(ext, cert.DNSNames, cert.EmailAddresses, cert.IPAddresses, cert.URIs, &buf)
 				case 19:
 					// basicConstraints: RFC 5280, 4.2.1.9
 					if !cert.BasicConstraintsValid {
@@ -744,7 +752,7 @@ func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
 				case 14:
 					err = printSubjKeyId(ext, &buf)
 				case 17:
-					err = printSubjAltNames(ext, csr.DNSNames, csr.EmailAddresses, csr.IPAddresses, &buf)
+					err = printSubjAltNames(ext, csr.DNSNames, csr.EmailAddresses, csr.IPAddresses, csr.URIs, &buf)
 				}
 			}
 			if err != nil {
