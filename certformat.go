@@ -71,9 +71,20 @@ func newCertificateShort(cert *x509.Certificate) *certificateShort {
 func (c *certificateShort) String() string {
 	var buf formatBuffer
 	buf.Writef("X.509v3 %s Certificate (%s) [Serial: %s]\n", c.Type, c.PublicKeyAlgorithm, c.SerialNumber)
-	buf.Writef("  Subject:     %s\n", c.Subject)
-	for _, s := range c.SANs {
-		buf.Writef("               %s\n", s)
+	sans := c.SANs
+	if len(c.Subject) > 0 {
+		sans = append([]string{c.Subject}, sans...)
+	}
+	if len(sans) == 0 {
+		buf.Writef("  Subject: \n")
+	} else {
+		for i, s := range sans {
+			if i == 0 {
+				buf.Writef("  Subject:     %s\n", s)
+			} else {
+				buf.Writef("               %s\n", s)
+			}
+		}
 	}
 	buf.Writef("  Issuer:      %s\n", c.Issuer)
 	if c.Provisioner != nil {
@@ -107,9 +118,20 @@ func newCertificateRequestShort(cr *x509.CertificateRequest) *certificateRequest
 func (c *certificateRequestShort) String() string {
 	var buf formatBuffer
 	buf.Writef("X.509v3 Certificate Signing Request (%s)\n", c.PublicKeyAlgorithm)
-	buf.Writef("  Subject:     %s\n", c.Subject)
-	for _, s := range c.SANs {
-		buf.Writef("               %s\n", s)
+	sans := c.SANs
+	if len(c.Subject) > 0 {
+		sans = append([]string{c.Subject}, sans...)
+	}
+	if len(sans) == 0 {
+		buf.Writef("  Subject: \n")
+	} else {
+		for i, s := range sans {
+			if i == 0 {
+				buf.Writef("  Subject:     %s\n", s)
+			} else {
+				buf.Writef("               %s\n", s)
+			}
+		}
 	}
 	return buf.String()
 }

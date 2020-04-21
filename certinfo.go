@@ -165,7 +165,11 @@ func printVersion(version int, buf *bytes.Buffer) {
 
 func printSubjectInformation(subj *pkix.Name, pkAlgo x509.PublicKeyAlgorithm, pk interface{}, buf *bytes.Buffer) error {
 	buf.WriteString(fmt.Sprintf("%8sSubject: ", ""))
-	printName(subj.Names, buf)
+	if len(subj.Names) > 0 {
+		printName(subj.Names, buf)
+	} else {
+		buf.WriteString("\n")
+	}
 	buf.WriteString(fmt.Sprintf("%8sSubject Public Key Info:\n%12sPublic Key Algorithm: ", "", ""))
 	switch pkAlgo {
 	case x509.RSA:
