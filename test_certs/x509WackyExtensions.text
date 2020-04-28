@@ -1,0 +1,39 @@
+Certificate Request:
+    Data:
+        Version: 0 (0x0)
+        Subject: CN=foo
+        Subject Public Key Info:
+            Public Key Algorithm: ECDSA
+                Public-Key: (256 bit)
+                X:
+                    10:da:5b:ec:40:48:38:d0:8d:ef:2a:42:41:03:9c:
+                    d6:d9:5a:cf:49:cb:b7:4e:76:d7:00:29:12:fe:b9:
+                    21:95
+                Y:
+                    64:74:45:1a:c4:87:37:ef:25:e9:b6:4b:51:f3:28:
+                    df:e0:ee:0e:c2:28:f1:df:30:f5:dd:63:5d:3e:e6:
+                    32:68
+                Curve: P-256
+        Requested Extensions:
+            X509v3 Subject Alternative Name:
+                DNS:foo
+            X509v3 Basic Constraints:
+                CA:TRUE, pathlen:1
+            X509v3 Key Usage: critical
+                Digital Signature, Key Encipherment, Certificate Sign
+            X509v3 Extended Key Usage:
+                Server Authentication, Client Authentication, Microsoft Kernel Code Signing, UNKNOWN(1.2.840.10045.4.3.4)
+            X509v3 Name Constraints: critical
+                Permitted:
+                  foo, bar, baz
+        Attributes:
+            1.2.3.4.5:
+                foo
+            1.1.13.1.2.4.15.17.1.3.1.2.4.1: critical
+                0...max..furman
+                30:0d:80:03:6d:61:78:81:06:66:75:72:6d:61:6e
+    Signature Algorithm: ECDSA-SHA256
+         30:46:02:21:00:d3:14:02:63:96:f6:d1:41:cb:cb:ad:7b:2f:
+         23:ee:4d:d7:1d:f4:78:66:98:15:cf:59:99:80:5c:d9:60:45:
+         24:02:21:00:99:50:11:5d:37:f6:98:6f:11:22:60:78:f1:f5:
+         57:e3:a5:b3:16:80:98:f2:cc:24:2c:3f:72:9a:df:e4:ad:ba

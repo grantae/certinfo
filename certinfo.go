@@ -164,8 +164,9 @@ func printVersion(version int, buf *bytes.Buffer) {
 }
 
 func printSubjectInformation(subj *pkix.Name, pkAlgo x509.PublicKeyAlgorithm, pk interface{}, buf *bytes.Buffer) error {
-	buf.WriteString(fmt.Sprintf("%8sSubject: ", ""))
+	buf.WriteString(fmt.Sprintf("%8sSubject:", ""))
 	if len(subj.Names) > 0 {
+		buf.WriteString(" ")
 		printName(subj.Names, buf)
 	} else {
 		buf.WriteString("\n")
@@ -238,7 +239,7 @@ func printSubjectInformation(subj *pkix.Name, pkAlgo x509.PublicKeyAlgorithm, pk
 	return nil
 }
 
-func printSubjKeyId(ext pkix.Extension, buf *bytes.Buffer) error {
+func printSubjKeyID(ext pkix.Extension, buf *bytes.Buffer) error {
 	// subjectKeyIdentifier: RFC 5280, 4.2.1.2
 	buf.WriteString(fmt.Sprintf("%12sX509v3 Subject Key Identifier:", ""))
 	if ext.Critical {
@@ -246,15 +247,15 @@ func printSubjKeyId(ext pkix.Extension, buf *bytes.Buffer) error {
 	} else {
 		buf.WriteString("\n")
 	}
-	var subjectKeyId []byte
-	if _, err := asn1.Unmarshal(ext.Value, &subjectKeyId); err != nil {
+	var subjectKeyID []byte
+	if _, err := asn1.Unmarshal(ext.Value, &subjectKeyID); err != nil {
 		return err
 	}
-	for i := 0; i < len(subjectKeyId); i++ {
+	for i := 0; i < len(subjectKeyID); i++ {
 		if i == 0 {
-			buf.WriteString(fmt.Sprintf("%16s%02X", "", subjectKeyId[0]))
+			buf.WriteString(fmt.Sprintf("%16s%02X", "", subjectKeyID[0]))
 		} else {
-			buf.WriteString(fmt.Sprintf(":%02X", subjectKeyId[i]))
+			buf.WriteString(fmt.Sprintf(":%02X", subjectKeyID[i]))
 		}
 	}
 	buf.WriteString("\n")
@@ -401,7 +402,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 			if len(ext.Id) == 4 && ext.Id[0] == 2 && ext.Id[1] == 5 && ext.Id[2] == 29 {
 				switch ext.Id[3] {
 				case 14:
-					err = printSubjKeyId(ext, &buf)
+					err = printSubjKeyID(ext, &buf)
 				case 15:
 					// keyUsage: RFC 5280, 4.2.1.3
 					buf.WriteString(fmt.Sprintf("%12sX509v3 Key Usage:", ""))
@@ -547,9 +548,9 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 						case x509.ExtKeyUsageAny:
 							list = append(list, "Any Usage")
 						case x509.ExtKeyUsageServerAuth:
-							list = append(list, "TLS Web Server Authentication")
+							list = append(list, "Server Authentication")
 						case x509.ExtKeyUsageClientAuth:
-							list = append(list, "TLS Web Client Authentication")
+							list = append(list, "Client Authentication")
 						case x509.ExtKeyUsageCodeSigning:
 							list = append(list, "Code Signing")
 						case x509.ExtKeyUsageEmailProtection:
@@ -729,6 +730,75 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 	return buf.String(), nil
 }
 
+var (
+	oidExtSubjectKeyID     = []int{2, 5, 29, 14}
+	oidExtSubjectAltName   = []int{2, 5, 29, 17}
+	oidExtKeyUsage         = asn1.ObjectIdentifier{2, 5, 29, 15}
+	oidExtExtendedKeyUsage = asn1.ObjectIdentifier{2, 5, 29, 37}
+	oidExtBasicConstraints = asn1.ObjectIdentifier{2, 5, 29, 19}
+	oidExtNameConstraints  = asn1.ObjectIdentifier{2, 5, 29, 30}
+)
+
+// RFC 5280, 4.2.1.9
+type basicConstraints struct {
+	IsCA       bool `asn1:"optional"`
+	MaxPathLen int  `asn1:"optional,default:-1"`
+}
+
+// RFC 5280, 4.2.1.10
+type nameConstraints struct {
+	Permitted []generalSubtree `asn1:"optional,tag:0"`
+	Excluded  []generalSubtree `asn1:"optional,tag:1"`
+}
+
+type generalSubtree struct {
+	Name string `asn1:"tag:2,optional,ia5"`
+}
+
+// RFC 5280, 4.2.1.3
+func parseKeyUsage(val []byte) (x509.KeyUsage, error) {
+	var usageBits asn1.BitString
+	if _, err := asn1.Unmarshal(val, &usageBits); err != nil {
+		return 0, err
+	}
+	var usage int
+	for i := 0; i < 9; i++ {
+		if usageBits.At(i) != 0 {
+			usage |= 1 << uint(i)
+		}
+	}
+	return x509.KeyUsage(usage), nil
+}
+
+// RFC 5280, 4.2.1.12  Extended Key Usage
+//
+// anyExtendedKeyUsage OBJECT IDENTIFIER ::= { id-ce-extKeyUsage 0 }
+//
+// id-kp OBJECT IDENTIFIER ::= { id-pkix 3 }
+//
+// id-kp-serverAuth             OBJECT IDENTIFIER ::= { id-kp 1 }
+// id-kp-clientAuth             OBJECT IDENTIFIER ::= { id-kp 2 }
+// id-kp-codeSigning            OBJECT IDENTIFIER ::= { id-kp 3 }
+// id-kp-emailProtection        OBJECT IDENTIFIER ::= { id-kp 4 }
+// id-kp-timeStamping           OBJECT IDENTIFIER ::= { id-kp 8 }
+// id-kp-OCSPSigning            OBJECT IDENTIFIER ::= { id-kp 9 }
+var (
+	oidExtKeyUsageAny                            = asn1.ObjectIdentifier{2, 5, 29, 37, 0}
+	oidExtKeyUsageServerAuth                     = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 1}
+	oidExtKeyUsageClientAuth                     = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 2}
+	oidExtKeyUsageCodeSigning                    = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 3}
+	oidExtKeyUsageEmailProtection                = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 4}
+	oidExtKeyUsageIPSECEndSystem                 = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 5}
+	oidExtKeyUsageIPSECTunnel                    = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 6}
+	oidExtKeyUsageIPSECUser                      = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 7}
+	oidExtKeyUsageTimeStamping                   = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 8}
+	oidExtKeyUsageOCSPSigning                    = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 9}
+	oidExtKeyUsageMicrosoftServerGatedCrypto     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 10, 3, 3}
+	oidExtKeyUsageNetscapeServerGatedCrypto      = asn1.ObjectIdentifier{2, 16, 840, 1, 113730, 4, 1}
+	oidExtKeyUsageMicrosoftCommercialCodeSigning = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 22}
+	oidExtKeyUsageMicrosoftKernelCodeSigning     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 61, 1, 1}
+)
+
 // CertificateRequestText returns a human-readable string representation
 // of the certificate request csr. The format is similar (but not identical)
 // to the OpenSSL way of printing certificates.
@@ -749,18 +819,220 @@ func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
 	// Optional extensions for PKCS #10, RFC 2986
 	if csr.Version == 0 && len(csr.Extensions) > 0 {
 		buf.WriteString(fmt.Sprintf("%8sRequested Extensions:\n", ""))
-		var err error
+		unknownExts := []pkix.Extension{}
 		for _, ext := range csr.Extensions {
-			if len(ext.Id) == 4 && ext.Id[0] == 2 && ext.Id[1] == 5 && ext.Id[2] == 29 {
-				switch ext.Id[3] {
-				case 14:
-					err = printSubjKeyId(ext, &buf)
-				case 17:
-					err = printSubjAltNames(ext, csr.DNSNames, csr.EmailAddresses, csr.IPAddresses, csr.URIs, &buf)
+			switch {
+			case ext.Id.Equal(oidExtSubjectKeyID):
+				err = printSubjKeyID(ext, &buf)
+			case ext.Id.Equal(oidExtSubjectAltName):
+				err = printSubjAltNames(ext, csr.DNSNames, csr.EmailAddresses, csr.IPAddresses, csr.URIs, &buf)
+			case ext.Id.Equal(oidExtKeyUsage):
+				// keyUsage: RFC 5280, 4.2.1.3
+				ku, err := parseKeyUsage(ext.Value)
+				if err != nil {
+					buf.WriteString(fmt.Sprintf("%12sX509v3 Key Usage: failed to decode\n", ""))
+					continue
 				}
+				buf.WriteString(fmt.Sprintf("%12sX509v3 Key Usage:", ""))
+				if ext.Critical {
+					buf.WriteString(" critical\n")
+				} else {
+					buf.WriteString("\n")
+				}
+				kus := []struct {
+					ku   x509.KeyUsage
+					desc string
+				}{
+					{x509.KeyUsageDigitalSignature, "Digital Signature"},
+					{x509.KeyUsageContentCommitment, "Content Commitment"},
+					{x509.KeyUsageKeyEncipherment, "Key Encipherment"},
+					{x509.KeyUsageDataEncipherment, "Data Encipherment"},
+					{x509.KeyUsageKeyAgreement, "Key Agreement"},
+					{x509.KeyUsageCertSign, "Certificate Sign"},
+					{x509.KeyUsageCRLSign, "CRL Sign"},
+					{x509.KeyUsageEncipherOnly, "Encipher Only"},
+					{x509.KeyUsageDecipherOnly, "Decipher Only"},
+				}
+				var usages []string
+				for _, u := range kus {
+					if ku&u.ku > 0 {
+						usages = append(usages, u.desc)
+					}
+				}
+				if len(usages) > 0 {
+					buf.WriteString(fmt.Sprintf("%16s%s", "", usages[0]))
+					for i := 1; i < len(usages); i++ {
+						buf.WriteString(fmt.Sprintf(", %s", usages[i]))
+					}
+					buf.WriteString("\n")
+				} else {
+					buf.WriteString(fmt.Sprintf("%16sNone\n", ""))
+				}
+			case ext.Id.Equal(oidExtBasicConstraints):
+				// basicConstraints: RFC 5280, 4.2.1.9
+				var constraints basicConstraints
+				_, err := asn1.Unmarshal(ext.Value, &constraints)
+				if err != nil {
+					buf.WriteString(fmt.Sprintf("%12sX509v3 Basic Constraints: failed to decode\n", ""))
+					continue
+				}
+				buf.WriteString(fmt.Sprintf("%12sX509v3 Basic Constraints:", ""))
+				if ext.Critical {
+					buf.WriteString(" critical\n")
+				} else {
+					buf.WriteString("\n")
+				}
+				if constraints.IsCA {
+					buf.WriteString(fmt.Sprintf("%16sCA:TRUE", ""))
+				} else {
+					buf.WriteString(fmt.Sprintf("%16sCA:FALSE", ""))
+				}
+				if constraints.MaxPathLen == 0 {
+					buf.WriteString(fmt.Sprintf(", pathlen:0\n"))
+				} else if constraints.MaxPathLen > 0 {
+					buf.WriteString(fmt.Sprintf(", pathlen:%d\n", constraints.MaxPathLen))
+				} else {
+					buf.WriteString("\n")
+				}
+			case ext.Id.Equal(oidExtNameConstraints):
+				// RFC 5280, 4.2.1.10
+				// NameConstraints ::= SEQUENCE {
+				//      permittedSubtrees       [0]     GeneralSubtrees OPTIONAL,
+				//      excludedSubtrees        [1]     GeneralSubtrees OPTIONAL }
+				//
+				// GeneralSubtrees ::= SEQUENCE SIZE (1..MAX) OF GeneralSubtree
+				//
+				// GeneralSubtree ::= SEQUENCE {
+				//      base                    GeneralName,
+				//      minimum         [0]     BaseDistance DEFAULT 0,
+				//      maximum         [1]     BaseDistance OPTIONAL }
+				//
+				// BaseDistance ::= INTEGER (0..MAX)
+				var constraints nameConstraints
+				_, err := asn1.Unmarshal(ext.Value, &constraints)
+				if err != nil {
+					buf.WriteString(fmt.Sprintf("%12sX509v3 Name Constraints: failed to decode\n", ""))
+					continue
+				}
+				if len(constraints.Excluded) > 0 && ext.Critical {
+					buf.WriteString(fmt.Sprintf("%12sX509v3 Name Constraints: failed to decode: unexpected excluded name constraints\n", ""))
+					continue
+				}
+				var permittedDNSDomains []string
+				for _, subtree := range constraints.Permitted {
+					if len(subtree.Name) == 0 {
+						continue
+					}
+					permittedDNSDomains = append(permittedDNSDomains, subtree.Name)
+				}
+				buf.WriteString(fmt.Sprintf("%12sX509v3 Name Constraints:", ""))
+				if ext.Critical {
+					buf.WriteString(" critical\n")
+				} else {
+					buf.WriteString("\n")
+				}
+				if len(permittedDNSDomains) > 0 {
+					buf.WriteString(fmt.Sprintf("%16sPermitted:\n%18s%s", "", "", permittedDNSDomains[0]))
+					for i := 1; i < len(permittedDNSDomains); i++ {
+						buf.WriteString(fmt.Sprintf(", %s", permittedDNSDomains[i]))
+					}
+					buf.WriteString("\n")
+				}
+			case ext.Id.Equal(oidExtExtendedKeyUsage):
+				// extKeyUsage: RFC 5280, 4.2.1.12
+				// id-ce-extKeyUsage OBJECT IDENTIFIER ::= { id-ce 37 }
+				//
+				// ExtKeyUsageSyntax ::= SEQUENCE SIZE (1..MAX) OF KeyPurposeId
+				//
+				// KeyPurposeId ::= OBJECT IDENTIFIER
+				var keyUsage []asn1.ObjectIdentifier
+				if _, err = asn1.Unmarshal(ext.Value, &keyUsage); err != nil {
+					buf.WriteString(fmt.Sprintf("%12sX509v3 Extended Key Usage: failed to decode\n", ""))
+					continue
+				}
+				ekus := []struct {
+					oid  asn1.ObjectIdentifier
+					desc string
+				}{
+					{oidExtKeyUsageAny, "Any Usage"},
+					{oidExtKeyUsageServerAuth, "Server Authentication"},
+					{oidExtKeyUsageClientAuth, "Client Authentication"},
+					{oidExtKeyUsageCodeSigning, "Code Signing"},
+					{oidExtKeyUsageEmailProtection, "E-mail Protection"},
+					{oidExtKeyUsageIPSECEndSystem, "IPSec End System"},
+					{oidExtKeyUsageIPSECTunnel, "IPSec Tunnel"},
+					{oidExtKeyUsageIPSECUser, "IPSec User"},
+					{oidExtKeyUsageTimeStamping, "Time Stamping"},
+					{oidExtKeyUsageOCSPSigning, "OCSP Signing"},
+					{oidExtKeyUsageMicrosoftServerGatedCrypto, "Microsoft Server Gated Crypto"},
+					{oidExtKeyUsageNetscapeServerGatedCrypto, "Netscape Server Gated Crypto"},
+					{oidExtKeyUsageMicrosoftCommercialCodeSigning, "Microsoft Commercial Code Signing"},
+					{oidExtKeyUsageMicrosoftKernelCodeSigning, "Microsoft Kernel Code Signing"},
+				}
+				var list []string
+				for _, u := range keyUsage {
+					found := false
+					for _, eku := range ekus {
+						if u.Equal(eku.oid) {
+							list = append(list, eku.desc)
+							found = true
+						}
+					}
+					if !found {
+						list = append(list, fmt.Sprintf("UNKNOWN(%s)", u.String()))
+					}
+				}
+				buf.WriteString(fmt.Sprintf("%12sX509v3 Extended Key Usage:", ""))
+				if ext.Critical {
+					buf.WriteString(" critical\n")
+				} else {
+					buf.WriteString("\n")
+				}
+				if len(list) > 0 {
+					buf.WriteString(fmt.Sprintf("%16s%s", "", list[0]))
+					for i := 1; i < len(list); i++ {
+						buf.WriteString(fmt.Sprintf(", %s", list[i]))
+					}
+					buf.WriteString("\n")
+				}
+			default:
+				unknownExts = append(unknownExts, ext)
 			}
 			if err != nil {
 				return "", err
+			}
+		}
+		if len(unknownExts) > 0 {
+			buf.WriteString(fmt.Sprintf("%8sAttributes:\n", ""))
+			for _, ext := range unknownExts {
+				buf.WriteString(fmt.Sprintf("%12s%s:", "", ext.Id.String()))
+				if ext.Critical {
+					buf.WriteString(" critical\n")
+				} else {
+					buf.WriteString("\n")
+				}
+				value := bytes.Runes(ext.Value)
+				sanitized := make([]rune, len(value))
+				hasSpecialChar := false
+				for i, r := range value {
+					if strconv.IsPrint(r) && r != '�' {
+						sanitized[i] = r
+					} else {
+						hasSpecialChar = true
+						sanitized[i] = '.'
+					}
+				}
+				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(sanitized)))
+				if hasSpecialChar {
+					buf.WriteString(fmt.Sprintf("%16s", ""))
+					for i, b := range ext.Value {
+						buf.WriteString(fmt.Sprintf("%02x", b))
+						if i != len(ext.Value)-1 {
+							buf.WriteString(":")
+						}
+					}
+					buf.WriteString("\n")
+				}
 			}
 		}
 	}
