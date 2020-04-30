@@ -24,7 +24,7 @@ Certificate:
             X509v3 Key Usage: critical
                 Digital Signature, Key Encipherment
             X509v3 Extended Key Usage:
-                TLS Web Server Authentication, TLS Web Client Authentication
+                Server Authentication, Client Authentication
             X509v3 Subject Key Identifier:
                 66:52:36:55:36:A8:43:9C:41:89:62:6B:57:D4:6B:A6:47:3B:F4:F5
             X509v3 Authority Key Identifier:

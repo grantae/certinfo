@@ -1,0 +1,24 @@
+Certificate Request:
+    Data:
+        Version: 0 (0x0)
+        Subject:
+        Subject Public Key Info:
+            Public Key Algorithm: ECDSA
+                Public-Key: (256 bit)
+                X:
+                    86:97:22:36:b7:98:9b:a5:c1:be:84:69:b4:24:c5:
+                    b4:a2:bf:d0:a6:1c:93:95:ce:06:18:07:1c:6a:9b:
+                    33:e0
+                Y:
+                    17:97:90:db:9c:2a:97:97:de:7b:a9:15:b6:c0:04:
+                    72:dc:37:f6:e3:c4:bf:3b:22:6b:3c:8f:3e:6c:76:
+                    5e:b1
+                Curve: P-256
+        Requested Extensions:
+            X509v3 Subject Alternative Name:
+                DNS:foo, DNS:bar, DNS:baz
+    Signature Algorithm: ECDSA-SHA256
+         30:45:02:20:4b:96:33:45:1d:11:e0:df:bd:6a:ac:b3:1c:a8:
+         63:87:14:ba:ff:be:16:b9:80:f7:b8:fe:15:ba:7b:2a:4e:a0:
+         02:21:00:ba:8c:ab:04:8b:d7:db:c4:a9:99:ea:20:f4:99:78:
+         88:12:58:cd:c7:92:37:3f:1a:ed:ca:d1:34:62:d3:ca:3b

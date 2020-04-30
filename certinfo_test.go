@@ -151,3 +151,12 @@ func TestCertInfoLeaf5(t *testing.T) {
 	testPairShort(t, "test_certs/leaf5.cert.pem", "test_certs/leaf5.cert.short", tCertificate)
 	testPairShort(t, "test_certs/leaf5.csr.pem", "test_certs/leaf5.csr.short", tCertificateRequest)
 }
+
+func TestCsrInfoWackyExtensions(t *testing.T) {
+	testPair(t, "test_certs/x509WackyExtensions.pem", "test_certs/x509WackyExtensions.text", tCertificateRequest)
+}
+
+func TestNoCN(t *testing.T) {
+	testPair(t, "test_certs/noCN.csr", "test_certs/noCN.csr.text", tCertificateRequest)
+	testPairShort(t, "test_certs/noCN.csr", "test_certs/noCN.csr.text.short", tCertificateRequest)
+}
