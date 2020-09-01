@@ -569,6 +569,9 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 							list = append(list, "UNKNOWN")
 						}
 					}
+					for _, oid := range cert.UnknownExtKeyUsage {
+						list = append(list, oid.String())
+					}
 					if len(list) > 0 {
 						buf.WriteString(fmt.Sprintf("%16s%s", "", list[0]))
 						for i := 1; i < len(list); i++ {
