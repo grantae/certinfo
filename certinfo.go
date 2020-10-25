@@ -38,6 +38,7 @@ var (
 	oidExtensionAuthorityInfoAccess   = []int{1, 3, 6, 1, 5, 5, 7, 1, 1}
 	oidNSComment                      = []int{2, 16, 840, 1, 113730, 1, 13}
 	oidStepProvisioner                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64, 1}
+	oidStepCertificateAuthority       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64, 2}
 	oidSignedCertificateTimestampList = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 11129, 2, 4, 2}
 )
 
@@ -50,6 +51,12 @@ type stepProvisioner struct {
 	Type          int
 	Name          []byte
 	CredentialID  []byte
+	KeyValuePairs []string `asn1:"optional,omitempty"`
+}
+
+type stepCertificateAuthority struct {
+	Type          string
+	CertificateID string   `asn1:"optional,omitempty"`
 	KeyValuePairs []string `asn1:"optional,omitempty"`
 }
 
@@ -656,6 +663,30 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				buf.WriteString(fmt.Sprintf("%16sName: %s\n", "", string(val.Name)))
 				if len(val.CredentialID) != 0 {
 					buf.WriteString(fmt.Sprintf("%16sCredentialID: %s\n", "", string(val.CredentialID)))
+				}
+				var key, value string
+				for i, l := 0, len(val.KeyValuePairs); i < l; i += 2 {
+					key, value = val.KeyValuePairs[i], "-"
+					if i+1 < l {
+						value = val.KeyValuePairs[i+1]
+					}
+					buf.WriteString(fmt.Sprintf("%16s%s: %s\n", "", key, value))
+				}
+			} else if ext.Id.Equal(oidStepCertificateAuthority) {
+				buf.WriteString(fmt.Sprintf("%12sX509v3 Step Registration Authority:", ""))
+				if ext.Critical {
+					buf.WriteString(" critical\n")
+				} else {
+					buf.WriteString("\n")
+				}
+				val := &stepCertificateAuthority{}
+				rest, err := asn1.Unmarshal(ext.Value, val)
+				if err != nil || len(rest) > 0 {
+					return "", errors.New("certinfo: Error parsing OID " + ext.Id.String())
+				}
+				buf.WriteString(fmt.Sprintf("%16sType: %s\n", "", val.Type))
+				if val.CertificateID != "" {
+					buf.WriteString(fmt.Sprintf("%16sCertificateID: %s\n", "", val.CertificateID))
 				}
 				var key, value string
 				for i, l := 0, len(val.KeyValuePairs); i < l; i += 2 {
