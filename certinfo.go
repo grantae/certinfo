@@ -77,6 +77,8 @@ func printName(names []pkix.AttributeTypeAndValue, buf *bytes.Buffer) []string {
 				values = append(values, fmt.Sprintf("CN=%s", name.Value))
 			case 6:
 				values = append(values, fmt.Sprintf("C=%s", name.Value))
+			case 7:
+				values = append(values, fmt.Sprintf("L=%s", name.Value))
 			case 8:
 				values = append(values, fmt.Sprintf("ST=%s", name.Value))
 			case 10:
