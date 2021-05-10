@@ -9,7 +9,6 @@ before_script:
 script:
 - make
 after_success:
-- bash <(curl -s https://codecov.io/bash) -t "$CODECOV_TOKEN" || echo "Codecov did
-  not collect coverage reports"
+- bash <(curl -s https://codecov.io/bash) || echo "Codecov did not collect coverage reports"
 notifications:
   email: false
