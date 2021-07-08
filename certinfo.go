@@ -498,6 +498,12 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 						}
 						buf.WriteString("\n")
 					}
+					if len(cert.PermittedEmailAddresses) > 0 {
+						buf.WriteString(fmt.Sprintf("%18sEmail: %s\n", "", cert.PermittedEmailAddresses[0]))
+						for i := 1; i < len(cert.PermittedEmailAddresses); i++ {
+							buf.WriteString(fmt.Sprintf(", %s", cert.PermittedEmailAddresses[i]))
+						}
+					}
 				case 31:
 					// CRLDistributionPoints: RFC 5280, 4.2.1.13
 					// TODO: Currently crypto/x509 does not fully implement this section,
