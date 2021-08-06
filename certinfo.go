@@ -491,62 +491,69 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					} else {
 						buf.WriteString("\n")
 					}
-					if len(cert.PermittedDNSDomains) > 0 {
-						buf.WriteString(fmt.Sprintf("%16sPermitted:\n%18sDNS: %s", "", "", cert.PermittedDNSDomains[0]))
-						for i := 1; i < len(cert.PermittedDNSDomains); i++ {
-							buf.WriteString(fmt.Sprintf(", %s", cert.PermittedDNSDomains[i]))
-						}
-						buf.WriteString("\n")
-					}
-					if len(cert.PermittedEmailAddresses) > 0 {
-						buf.WriteString(fmt.Sprintf("%18sEmail: %s", "", cert.PermittedEmailAddresses[0]))
-						for i := 1; i < len(cert.PermittedEmailAddresses); i++ {
-							buf.WriteString(fmt.Sprintf(", %s", cert.PermittedEmailAddresses[i]))
-						}
-						buf.WriteString("\n")
-					}
-					if len(cert.PermittedURIDomains) > 0 {
-						buf.WriteString(fmt.Sprintf("%18sURI: %s", "", cert.PermittedURIDomains[0]))
-						for i := 1; i < len(cert.PermittedURIDomains); i++ {
-							buf.WriteString(fmt.Sprintf(", %s", cert.PermittedURIDomains[i]))
-						}
-						buf.WriteString("\n")
-					}
-					if len(cert.PermittedIPRanges) > 0 {
-						buf.WriteString(fmt.Sprintf("%18sIP Range: %s", "", cert.PermittedIPRanges[0]))
-						for i := 1; i < len(cert.PermittedIPRanges); i++ {
-							buf.WriteString(fmt.Sprintf(", %s", cert.PermittedIPRanges[i]))
-						}
-						buf.WriteString("\n")
-					}
+					if len(cert.PermittedDNSDomains) > 0 || len(cert.PermittedEmailAddresses) > 0 || len(cert.PermittedURIDomains) > 0 || len(cert.PermittedIPRanges) > 0 {
+						buf.WriteString(fmt.Sprintf("%16sPermitted:\n", ""))
 
-					if len(cert.ExcludedDNSDomains) > 0 {
-						buf.WriteString(fmt.Sprintf("%16sExcluded:\n%18sDNS: %s", "", "", cert.ExcludedDNSDomains[0]))
-						for i := 1; i < len(cert.ExcludedDNSDomains); i++ {
-							buf.WriteString(fmt.Sprintf(", %s", cert.ExcludedDNSDomains[i]))
+						if len(cert.PermittedDNSDomains) > 0 {
+							buf.WriteString(fmt.Sprintf("%18sDNS: %s", "", cert.PermittedDNSDomains[0]))
+							for i := 1; i < len(cert.PermittedDNSDomains); i++ {
+								buf.WriteString(fmt.Sprintf(", %s", cert.PermittedDNSDomains[i]))
+							}
+							buf.WriteString("\n")
 						}
-						buf.WriteString("\n")
+						if len(cert.PermittedEmailAddresses) > 0 {
+							buf.WriteString(fmt.Sprintf("%18sEmail: %s", "", cert.PermittedEmailAddresses[0]))
+							for i := 1; i < len(cert.PermittedEmailAddresses); i++ {
+								buf.WriteString(fmt.Sprintf(", %s", cert.PermittedEmailAddresses[i]))
+							}
+							buf.WriteString("\n")
+						}
+						if len(cert.PermittedURIDomains) > 0 {
+							buf.WriteString(fmt.Sprintf("%18sURI: %s", "", cert.PermittedURIDomains[0]))
+							for i := 1; i < len(cert.PermittedURIDomains); i++ {
+								buf.WriteString(fmt.Sprintf(", %s", cert.PermittedURIDomains[i]))
+							}
+							buf.WriteString("\n")
+						}
+						if len(cert.PermittedIPRanges) > 0 {
+							buf.WriteString(fmt.Sprintf("%18sIP Range: %s", "", cert.PermittedIPRanges[0]))
+							for i := 1; i < len(cert.PermittedIPRanges); i++ {
+								buf.WriteString(fmt.Sprintf(", %s", cert.PermittedIPRanges[i]))
+							}
+							buf.WriteString("\n")
+						}
 					}
-					if len(cert.ExcludedEmailAddresses) > 0 {
-						buf.WriteString(fmt.Sprintf("%18sEmail: %s", "", cert.ExcludedEmailAddresses[0]))
-						for i := 1; i < len(cert.ExcludedEmailAddresses); i++ {
-							buf.WriteString(fmt.Sprintf(", %s", cert.ExcludedEmailAddresses[i]))
+					if len(cert.ExcludedDNSDomains) > 0 || len(cert.ExcludedEmailAddresses) > 0 || len(cert.ExcludedURIDomains) > 0 || len(cert.ExcludedIPRanges) > 0 {
+						buf.WriteString(fmt.Sprintf("%16sExcluded:\n", ""))
+
+						if len(cert.ExcludedDNSDomains) > 0 {
+							buf.WriteString(fmt.Sprintf("%18sDNS: %s", "", cert.ExcludedDNSDomains[0]))
+							for i := 1; i < len(cert.ExcludedDNSDomains); i++ {
+								buf.WriteString(fmt.Sprintf(", %s", cert.ExcludedDNSDomains[i]))
+							}
+							buf.WriteString("\n")
 						}
-						buf.WriteString("\n")
-					}
-					if len(cert.ExcludedURIDomains) > 0 {
-						buf.WriteString(fmt.Sprintf("%18sURI: %s", "", cert.ExcludedURIDomains[0]))
-						for i := 1; i < len(cert.ExcludedURIDomains); i++ {
-							buf.WriteString(fmt.Sprintf(", %s", cert.ExcludedURIDomains[i]))
+						if len(cert.ExcludedEmailAddresses) > 0 {
+							buf.WriteString(fmt.Sprintf("%18sEmail: %s", "", cert.ExcludedEmailAddresses[0]))
+							for i := 1; i < len(cert.ExcludedEmailAddresses); i++ {
+								buf.WriteString(fmt.Sprintf(", %s", cert.ExcludedEmailAddresses[i]))
+							}
+							buf.WriteString("\n")
 						}
-						buf.WriteString("\n")
-					}
-					if len(cert.ExcludedIPRanges) > 0 {
-						buf.WriteString(fmt.Sprintf("%18sIP Range: %s", "", cert.ExcludedIPRanges[0]))
-						for i := 1; i < len(cert.ExcludedIPRanges); i++ {
-							buf.WriteString(fmt.Sprintf(", %s", cert.ExcludedIPRanges[i]))
+						if len(cert.ExcludedURIDomains) > 0 {
+							buf.WriteString(fmt.Sprintf("%18sURI: %s", "", cert.ExcludedURIDomains[0]))
+							for i := 1; i < len(cert.ExcludedURIDomains); i++ {
+								buf.WriteString(fmt.Sprintf(", %s", cert.ExcludedURIDomains[i]))
+							}
+							buf.WriteString("\n")
 						}
-						buf.WriteString("\n")
+						if len(cert.ExcludedIPRanges) > 0 {
+							buf.WriteString(fmt.Sprintf("%18sIP Range: %s", "", cert.ExcludedIPRanges[0]))
+							for i := 1; i < len(cert.ExcludedIPRanges); i++ {
+								buf.WriteString(fmt.Sprintf(", %s", cert.ExcludedIPRanges[i]))
+							}
+							buf.WriteString("\n")
+						}
 					}
 
 				case 31:
