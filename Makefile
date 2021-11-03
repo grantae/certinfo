@@ -4,6 +4,8 @@ SRC=$(shell find . -type f -name '*.go')
 
 all: test lint
 
+ci: test
+
 .PHONY: all
 
 #########################################
