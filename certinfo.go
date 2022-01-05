@@ -42,6 +42,23 @@ var (
 	oidSignedCertificateTimestampList = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 11129, 2, 4, 2}
 )
 
+// stepProvisionerType are string representation of the provisioner type (int)
+// in the step provisioner extension.
+var stepProvisionerType = [...]string{
+	"NOOP",   // Type 0, is not supported
+	"JWK",    // Type 1
+	"OIDC",   // Type 2
+	"GCP",    // Type 3
+	"AWS",    // Type 4
+	"Azure",  // Type 5
+	"ACME",   // Type 6
+	"X5C",    // Type 7
+	"K8sSA",  // Type 8
+	"SSHPOP", // Type 9
+	"SCEP",   // Type 10
+	"Nebula", // Type 11
+}
+
 // validity allows unmarshaling the certificate validity date range
 type validity struct {
 	NotBefore, NotAfter time.Time
@@ -696,27 +713,15 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				if err != nil || len(rest) > 0 {
 					return "", errors.New("certinfo: Error parsing OID " + ext.Id.String())
 				}
+
+				// Get type name
 				var typ string
-				switch val.Type {
-				case 1:
-					typ = "JWK"
-				case 2:
-					typ = "OIDC"
-				case 3:
-					typ = "GCP"
-				case 4:
-					typ = "AWS"
-				case 5:
-					typ = "Azure"
-				case 6:
-					typ = "ACME"
-				case 7:
-					typ = "X5C"
-				case 8:
-					typ = "K8sSA"
-				default:
+				if len(stepProvisionerType) > val.Type {
+					typ = stepProvisionerType[val.Type]
+				} else {
 					typ = fmt.Sprintf("%d (unknown)", val.Type)
 				}
+
 				buf.WriteString(fmt.Sprintf("%16sType: %s\n", "", typ))
 				buf.WriteString(fmt.Sprintf("%16sName: %s\n", "", string(val.Name)))
 				if len(val.CredentialID) != 0 {
