@@ -2,7 +2,7 @@
 Q=$(if $V,,@)
 SRC=$(shell find . -type f -name '*.go')
 
-all: test lint
+all: lint test
 
 ci: test
 

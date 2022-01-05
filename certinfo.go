@@ -2,7 +2,7 @@ package certinfo
 
 import (
 	"bytes"
-	"crypto/dsa" //nolint:staticcheck
+	"crypto/dsa" // nolint:staticcheck // used to inspect key
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
@@ -121,7 +121,8 @@ func printName(names []pkix.AttributeTypeAndValue, buf *bytes.Buffer) []string {
 	values := []string{}
 	for _, name := range names {
 		oid := name.Type
-		if len(oid) == 4 && oid[0] == 2 && oid[1] == 5 && oid[2] == 4 {
+		switch {
+		case len(oid) == 4 && oid[0] == 2 && oid[1] == 5 && oid[2] == 4:
 			switch oid[3] {
 			case 3:
 				values = append(values, fmt.Sprintf("CN=%s", name.Value))
@@ -144,13 +145,13 @@ func printName(names []pkix.AttributeTypeAndValue, buf *bytes.Buffer) []string {
 			default:
 				values = append(values, fmt.Sprintf("UnknownOID=%s", name.Type.String()))
 			}
-		} else if oid.Equal(oidEmailAddress) {
+		case oid.Equal(oidEmailAddress):
 			values = append(values, fmt.Sprintf("emailAddress=%s", name.Value))
-		} else if oid.Equal(oidDomainComponent) {
+		case oid.Equal(oidDomainComponent):
 			values = append(values, fmt.Sprintf("DC=%s", name.Value))
-		} else if oid.Equal(oidUserID) {
+		case oid.Equal(oidUserID):
 			values = append(values, fmt.Sprintf("UID=%s", name.Value))
-		} else {
+		default:
 			values = append(values, fmt.Sprintf("UnknownOID=%s", name.Type.String()))
 		}
 	}
@@ -198,7 +199,7 @@ func printSubjectInformation(subj *pkix.Name, pkAlgo x509.PublicKeyAlgorithm, pk
 	buf.WriteString(fmt.Sprintf("%8sSubject Public Key Info:\n%12sPublic Key Algorithm: ", "", ""))
 	switch pkAlgo {
 	case x509.RSA:
-		buf.WriteString(fmt.Sprintf("RSA\n"))
+		buf.WriteString("RSA\n")
 		if rsaKey, ok := pk.(*rsa.PublicKey); ok {
 			buf.WriteString(fmt.Sprintf("%16sPublic-Key: (%d bit)\n", "", rsaKey.N.BitLen()))
 			// Some implementations (notably OpenSSL) prepend 0x00 to the modulus
@@ -220,7 +221,7 @@ func printSubjectInformation(subj *pkix.Name, pkAlgo x509.PublicKeyAlgorithm, pk
 			return errors.New("certinfo: Expected rsa.PublicKey for type x509.RSA")
 		}
 	case x509.DSA:
-		buf.WriteString(fmt.Sprintf("DSA\n"))
+		buf.WriteString("DSA\n")
 		if dsaKey, ok := pk.(*dsa.PublicKey); ok {
 			dsaKeyPrinter("pub", dsaKey.Y, buf)
 			dsaKeyPrinter("P", dsaKey.P, buf)
@@ -230,7 +231,7 @@ func printSubjectInformation(subj *pkix.Name, pkAlgo x509.PublicKeyAlgorithm, pk
 			return errors.New("certinfo: Expected dsa.PublicKey for type x509.DSA")
 		}
 	case x509.ECDSA:
-		buf.WriteString(fmt.Sprintf("ECDSA\n"))
+		buf.WriteString("ECDSA\n")
 		if ecdsaKey, ok := pk.(*ecdsa.PublicKey); ok {
 			buf.WriteString(fmt.Sprintf("%16sPublic-Key: (%d bit)\n", "", ecdsaKey.Params().BitSize))
 			dsaKeyPrinter("X", ecdsaKey.X, buf)
@@ -240,16 +241,15 @@ func printSubjectInformation(subj *pkix.Name, pkAlgo x509.PublicKeyAlgorithm, pk
 			return errors.New("certinfo: Expected ecdsa.PublicKey for type x509.DSA")
 		}
 	case x509.Ed25519:
-		buf.WriteString(fmt.Sprintf("Ed25519\n"))
+		buf.WriteString("Ed25519\n")
 		if ed25519Key, ok := pk.(ed25519.PublicKey); ok {
-			bytes := []byte(ed25519Key)
-			buf.WriteString(fmt.Sprintf("%16sPublic-Key: (%d bit)", "", len(bytes)))
-			for i, b := range bytes {
+			buf.WriteString(fmt.Sprintf("%16sPublic-Key: (%d bit)", "", len(ed25519Key)))
+			for i, b := range ed25519Key {
 				if (i % 15) == 0 {
 					buf.WriteString(fmt.Sprintf("\n%20s", ""))
 				}
 				buf.WriteString(fmt.Sprintf("%02x", b))
-				if i != len(bytes)-1 {
+				if i != len(ed25519Key)-1 {
 					buf.WriteString(":")
 				}
 			}
@@ -286,7 +286,7 @@ func printSubjKeyID(ext pkix.Extension, buf *bytes.Buffer) error {
 	return nil
 }
 
-func printSubjAltNames(ext pkix.Extension, dnsNames []string, emailAddresses []string, ipAddresses []net.IP, uris []*url.URL, buf *bytes.Buffer) error {
+func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ipAddresses []net.IP, uris []*url.URL, buf *bytes.Buffer) error {
 	// subjectAltName: RFC 5280, 4.2.1.6
 	// TODO: Currently crypto/x509 only extracts DNS, email, and IP addresses.
 	// We should add the others to it or implement them here.
@@ -378,7 +378,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 	var buf bytes.Buffer
 	buf.Grow(4096) // 4KiB should be enough
 
-	buf.WriteString(fmt.Sprintf("Certificate:\n"))
+	buf.WriteString("Certificate:\n")
 	buf.WriteString(fmt.Sprintf("%4sData:\n", ""))
 	printVersion(cert.Version, &buf)
 	buf.WriteString(fmt.Sprintf("%8sSerial Number: %d (%#x)\n", "", cert.SerialNumber, cert.SerialNumber))
@@ -402,7 +402,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 	// Issuer/Subject Unique ID, typically used in old v2 certificates
 	issuerUID, subjectUID, err := certUniqueIDs(cert.RawTBSCertificate)
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("certinfo: Error parsing TBS unique attributes: %s\n", err.Error()))
+		return "", errors.Errorf("certinfo: Error parsing TBS unique attributes: %v\n", err)
 	}
 	if len(issuerUID) > 0 {
 		buf.WriteString(fmt.Sprintf("%8sIssuer Unique ID: %02x", "", issuerUID[0]))
@@ -423,6 +423,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 	if cert.Version == 3 && len(cert.Extensions) > 0 {
 		buf.WriteString(fmt.Sprintf("%8sX509v3 extensions:\n", ""))
 		for _, ext := range cert.Extensions {
+			// nolint:gocritic // avoid nested switch statements
 			if len(ext.Id) == 4 && ext.Id[0] == 2 && ext.Id[1] == 5 && ext.Id[2] == 29 {
 				switch ext.Id[3] {
 				case 14:
@@ -491,7 +492,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 						buf.WriteString(fmt.Sprintf("%16sCA:FALSE", ""))
 					}
 					if cert.MaxPathLenZero {
-						buf.WriteString(fmt.Sprintf(", pathlen:0\n"))
+						buf.WriteString(", pathlen:0\n")
 					} else if cert.MaxPathLen > 0 {
 						buf.WriteString(fmt.Sprintf(", pathlen:%d\n", cert.MaxPathLen))
 					} else {
@@ -903,7 +904,7 @@ func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
 	var buf bytes.Buffer
 	buf.Grow(4096) // 4KiB should be enough
 
-	buf.WriteString(fmt.Sprintf("Certificate Request:\n"))
+	buf.WriteString("Certificate Request:\n")
 	buf.WriteString(fmt.Sprintf("%4sData:\n", ""))
 	printVersion(csr.Version, &buf)
 
@@ -984,11 +985,12 @@ func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
 				} else {
 					buf.WriteString(fmt.Sprintf("%16sCA:FALSE", ""))
 				}
-				if constraints.MaxPathLen == 0 {
-					buf.WriteString(fmt.Sprintf(", pathlen:0\n"))
-				} else if constraints.MaxPathLen > 0 {
+				switch {
+				case constraints.MaxPathLen == 0:
+					buf.WriteString(", pathlen:0\n")
+				case constraints.MaxPathLen > 0:
 					buf.WriteString(fmt.Sprintf(", pathlen:%d\n", constraints.MaxPathLen))
-				} else {
+				default:
 					buf.WriteString("\n")
 				}
 			case ext.Id.Equal(oidExtNameConstraints):
@@ -1017,7 +1019,7 @@ func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
 				}
 				var permittedDNSDomains []string
 				for _, subtree := range constraints.Permitted {
-					if len(subtree.Name) == 0 {
+					if subtree.Name == "" {
 						continue
 					}
 					permittedDNSDomains = append(permittedDNSDomains, subtree.Name)
