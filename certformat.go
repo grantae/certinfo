@@ -2,7 +2,7 @@ package certinfo
 
 import (
 	"bytes"
-	"crypto/dsa" //nolint:staticcheck
+	"crypto/dsa" // nolint:staticcheck // used to inspect key
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
@@ -88,7 +88,7 @@ func (c *certificateShort) String() string {
 	}
 	buf.Writef("  Issuer:      %s\n", c.Issuer)
 	if c.Provisioner != nil {
-		if len(c.Provisioner.ID) == 0 {
+		if c.Provisioner.ID == "" {
 			buf.Writef("  Provisioner: %s\n", c.Provisioner.Name)
 		} else {
 			buf.Writef("  Provisioner: %s [ID: %s]\n", c.Provisioner.Name, c.Provisioner.ID)

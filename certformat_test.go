@@ -3,7 +3,7 @@ package certinfo
 import (
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -123,7 +123,7 @@ func mustParseTime(t *testing.T, s string) time.Time {
 }
 
 func mustParseCertificate(t *testing.T, filename string) *x509.Certificate {
-	pemData, err := ioutil.ReadFile(filename)
+	pemData, err := os.ReadFile(filename)
 	if err != nil {
 		t.Fatalf("failed to read %s: %v", filename, err)
 	}
@@ -139,7 +139,7 @@ func mustParseCertificate(t *testing.T, filename string) *x509.Certificate {
 }
 
 func mustParseCertificateRequest(t *testing.T, filename string) *x509.CertificateRequest {
-	pemData, err := ioutil.ReadFile(filename)
+	pemData, err := os.ReadFile(filename)
 	if err != nil {
 		t.Fatalf("failed to read %s: %v", filename, err)
 	}

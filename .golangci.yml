@@ -8,7 +8,7 @@ linters-settings:
           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
-  golint:
+  revive:
     min-confidence: 0
   gocyclo:
     min-complexity: 10
@@ -36,22 +36,30 @@ linters-settings:
       - performance
       - style
       - experimental
+      - diagnostic
     disabled-checks:
-      - wrapperFunc
-      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - commentFormatting
+      - commentedOutCode
+      - hugeParam
+      - octalLiteral
+      - rangeValCopy
+      - tooManyResultsChecker
+      - unnamedResult
 
 linters:
   disable-all: true
   enable:
-    - gofmt
-    - golint
-    - vet
-    - misspell
-    - ineffassign
     - deadcode
+    - gocritic
+    - gofmt
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - revive
     - staticcheck
-    - unused
     - structcheck
+    - unused
 
 run:
   skip-dirs:
@@ -59,14 +67,7 @@ run:
 
 issues:
   exclude:
-    - can't lint
     - declaration of "err" shadows declaration at line
     - should have a package comment, unless it's in another file for this package
+    - func `CLICommand.
     - error strings should not be capitalized or end with punctuation or a newline
-    - Error return value of `buf.Writef` is not checked
-# golangci.com configuration
-# https://github.com/golangci/golangci/wiki/Configuration
-service:
-  golangci-lint-version: 1.18.x # use the fixed version to not introduce new linters unexpectedly
-  prepare:
-    - echo "here I can run custom commands, but no preparation needed for this repo"

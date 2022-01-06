@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -18,7 +18,7 @@ const (
 // Compares a PEM-encoded certificate to a reference file.
 func testPair(t *testing.T, certFile, refFile string, inputType InputType) {
 	// Read and parse the certificate
-	pemData, err := ioutil.ReadFile(certFile)
+	pemData, err := os.ReadFile(certFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func testPair(t *testing.T, certFile, refFile string, inputType InputType) {
 	resultData := []byte(result)
 
 	// Read the reference output
-	refData, err := ioutil.ReadFile(refFile)
+	refData, err := os.ReadFile(refFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func testPair(t *testing.T, certFile, refFile string, inputType InputType) {
 // Compares a PEM-encoded certificate to a reference file.
 func testPairShort(t *testing.T, certFile, refFile string, inputType InputType) {
 	// Read and parse the certificate
-	pemData, err := ioutil.ReadFile(certFile)
+	pemData, err := os.ReadFile(certFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func testPairShort(t *testing.T, certFile, refFile string, inputType InputType) 
 	resultData := []byte(result)
 
 	// Read the reference output
-	refData, err := ioutil.ReadFile(refFile)
+	refData, err := os.ReadFile(refFile)
 	if err != nil {
 		t.Fatal(err)
 	}
