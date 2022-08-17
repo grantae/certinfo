@@ -1,11 +1,12 @@
 package certinfo
 
 import (
-	"bytes"
 	"crypto/x509"
 	"encoding/pem"
 	"io/ioutil"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 type InputType int
@@ -54,9 +55,9 @@ func testPair(t *testing.T, certFile, refFile string, inputType InputType) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(resultData, refData) {
+	if diff := cmp.Diff(resultData, refData); diff != "" {
 		t.Logf("'%s' did not match reference '%s'\n", certFile, refFile)
-		t.Errorf("Dump follows:\n%s\n", result)
+		t.Errorf("Dump follows:\n%s\n", diff)
 	}
 }
 
