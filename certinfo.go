@@ -1,6 +1,7 @@
 package certinfo
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/dsa"
 	"crypto/ecdsa"
@@ -12,6 +13,7 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"strings"
 	"time"
 )
 
@@ -252,7 +254,14 @@ func printSignature(sigAlgo x509.SignatureAlgorithm, sig []byte, buf *bytes.Buff
 // CertificateText returns a human-readable string representation
 // of the certificate cert. The format is similar (but not identical)
 // to the OpenSSL way of printing certificates.
-func CertificateText(cert *x509.Certificate) (string, error) {
+func CertificateText(cert *x509.Certificate, opts ...Option) (string, error) {
+	o := &options{
+		formatters: make(map[string]Formatter),
+	}
+	for _, fn := range opts {
+		fn(o)
+	}
+
 	var buf bytes.Buffer
 	buf.Grow(4096) // 4KiB should be enough
 
@@ -518,6 +527,14 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					buf.WriteString(fmt.Sprintf("%12sNetscape Comment: critical\n%16s%s\n", "", "", comment))
 				} else {
 					buf.WriteString(fmt.Sprintf("%12sNetscape Comment:\n%16s%s\n", "", "", comment))
+				}
+			} else if format, ok := o.formatters[ext.Id.String()]; ok {
+				// If configured, use custom formatter.
+				scanner := bufio.NewScanner(strings.NewReader(format(ext)))
+				for scanner.Scan() {
+					// Prepend padding so that formatted string appears in-line
+					// with other content.
+					buf.WriteString(fmt.Sprintf("%12s%s\n", "", scanner.Text()))
 				}
 			} else {
 				buf.WriteString(fmt.Sprintf("%12sUnknown extension %s\n", "", ext.Id.String()))
