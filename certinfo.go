@@ -42,6 +42,32 @@ var (
 	oidSignedCertificateTimestampList = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 11129, 2, 4, 2}
 )
 
+// Yubico PIV attestation OIDs from
+// https://developers.yubico.com/PIV/Introduction/PIV_attestation.html
+var (
+	// Firmware version, encoded as 3 bytes, like: 040300 for 4.3.0
+	oidYubicoFirmwareVersion = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 41482, 3, 3}
+	// Serial number of the YubiKey, encoded as an integer.
+	oidYubicoSerialNumber = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 41482, 3, 7}
+	// Two bytes, the first encoding pin policy and the second touch policy:
+	//
+	//   - Pin policy: 01 - never, 02 - once per session, 03 - always
+	//   - Touch policy: 01 - never, 02 - always, 03 - cached for 15s
+	oidYubicoPolicy = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 41482, 3, 8}
+	// Formfactor, encoded as one byte:
+	//
+	//   - USB-A Keychain: 01 (81 for FIPS Devices)
+	//   - USB-A Nano: 02 (82 for FIPS Devices)
+	//   - USB-C Keychain: 03 (83 for FIPS Devices)
+	//   - USB-C Nano: 04 (84 for FIPS Devices)
+	//   - Lightning and USB-C: 05 (85 for FIPS Devices)
+	oidYubicoFormfactor = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 41482, 3, 9}
+	// FIPS Certified YubiKey.
+	oidYubicoFipsCertified = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 41482, 3, 10}
+	// CSPN Certified YubiKey.
+	oidYubicoCspnCertified = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 41482, 3, 11}
+)
+
 // stepProvisionerType are string representation of the provisioner type (int)
 // in the step provisioner extension.
 var stepProvisionerType = [...]string{
@@ -359,6 +385,86 @@ func printSCTSignature(sig ct.DigitallySigned, buf *bytes.Buffer) {
 	buf.WriteString("\n")
 }
 
+func printExtensionHeader(name string, ext pkix.Extension, buf *bytes.Buffer) {
+	buf.WriteString(fmt.Sprintf("%12s%s:", "", name))
+	if ext.Critical {
+		buf.WriteString(" critical\n")
+	} else {
+		buf.WriteString("\n")
+	}
+}
+
+func yubicoVersion(v []byte) string {
+	if len(v) == 0 {
+		return "unknown"
+	}
+
+	var version string
+	for i, b := range v {
+		if i < len(v)-1 {
+			version += strconv.Itoa(int(b)) + "."
+		} else {
+			version += strconv.Itoa(int(b))
+		}
+	}
+	return version
+}
+
+func yubicoPolicies(v []byte) []string {
+	if len(v) == 0 {
+		return []string{"unknown"}
+	}
+	policies := make([]string, 0, 2)
+	for i, b := range v {
+		if i == 0 {
+			switch b {
+			case 1:
+				policies = append(policies, "Pin policy: never")
+			case 2:
+				policies = append(policies, "Pin policy: once per session")
+			case 3:
+				policies = append(policies, "Pin policy: always")
+			default:
+				policies = append(policies, fmt.Sprintf("Pin policy: unknown (0x%x)", b))
+			}
+		} else if i == 1 {
+			switch b {
+			case 1:
+				policies = append(policies, "Touch policy: never")
+			case 2:
+				policies = append(policies, "Touch policy: once per session")
+			case 3:
+				policies = append(policies, "Touch policy: always")
+			default:
+				policies = append(policies, fmt.Sprintf("Touch policy: unknown (0x%x)", b))
+			}
+		} else {
+			break
+		}
+	}
+	return policies
+}
+
+func yubicoFormfactor(v []byte) string {
+	if len(v) == 0 {
+		return "unknown"
+	}
+	switch v[0] {
+	case 1, 81:
+		return "USB-A Keychain"
+	case 2, 82:
+		return "USB-A Nano"
+	case 3, 83:
+		return "USB-C Keychain"
+	case 4, 84:
+		return "USB-C Nano"
+	case 5, 85:
+		return "Lightning or USB-C"
+	default:
+		return "unknown"
+	}
+}
+
 // CertificateShortText returns the human-readable string representation of the
 // given cert using a short and friendly format.
 func CertificateShortText(cert *x509.Certificate) (string, error) {
@@ -668,7 +774,13 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				if err != nil {
 					return "", err
 				}
-			} else if ext.Id.Equal(oidExtensionAuthorityInfoAccess) {
+
+				// Continue to next extension
+				continue
+			}
+
+			switch {
+			case ext.Id.Equal(oidExtensionAuthorityInfoAccess):
 				// authorityInfoAccess: RFC 5280, 4.2.2.1
 				buf.WriteString(fmt.Sprintf("%12sAuthority Information Access:", ""))
 				if ext.Critical {
@@ -690,7 +802,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					}
 					buf.WriteString("\n")
 				}
-			} else if ext.Id.Equal(oidNSComment) {
+			case ext.Id.Equal(oidNSComment):
 				// Netscape comment
 				var comment string
 				rest, err := asn1.Unmarshal(ext.Value, &comment)
@@ -702,7 +814,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				} else {
 					buf.WriteString(fmt.Sprintf("%12sNetscape Comment:\n%16s%s\n", "", "", comment))
 				}
-			} else if ext.Id.Equal(oidStepProvisioner) {
+			case ext.Id.Equal(oidStepProvisioner):
 				buf.WriteString(fmt.Sprintf("%12sX509v3 Step Provisioner:", ""))
 				if ext.Critical {
 					buf.WriteString(" critical\n")
@@ -736,7 +848,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					}
 					buf.WriteString(fmt.Sprintf("%16s%s: %s\n", "", key, value))
 				}
-			} else if ext.Id.Equal(oidStepCertificateAuthority) {
+			case ext.Id.Equal(oidStepCertificateAuthority):
 				buf.WriteString(fmt.Sprintf("%12sX509v3 Step Registration Authority:", ""))
 				if ext.Critical {
 					buf.WriteString(" critical\n")
@@ -760,7 +872,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					}
 					buf.WriteString(fmt.Sprintf("%16s%s: %s\n", "", key, value))
 				}
-			} else if ext.Id.Equal(oidSignedCertificateTimestampList) {
+			case ext.Id.Equal(oidSignedCertificateTimestampList):
 				buf.WriteString(fmt.Sprintf("%12sRFC6962 Certificate Transparency SCT:", ""))
 				if ext.Critical {
 					buf.WriteString(" critical\n")
@@ -792,7 +904,33 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					// buf.WriteString(fmt.Sprintf("%20sExtensions: %v\n", "", sct.Extensions))
 					printSCTSignature(sct.Signature, &buf)
 				}
-			} else {
+			case ext.Id.Equal(oidYubicoFirmwareVersion):
+				printExtensionHeader("X509v3 YubiKey FirmwareVersion", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16s%s\n", "", yubicoVersion(ext.Value)))
+			case ext.Id.Equal(oidYubicoSerialNumber):
+				var serialNumber int
+				rest, err := asn1.Unmarshal(ext.Value, &serialNumber)
+				if err != nil || len(rest) > 0 {
+					return "", errors.New("certinfo: Error parsing OID " + ext.Id.String())
+				}
+				printExtensionHeader("X509v3 YubiKey Serial Number", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16s%d\n", "", serialNumber))
+			case ext.Id.Equal(oidYubicoPolicy):
+				policies := yubicoPolicies(ext.Value)
+				printExtensionHeader("X509v3 YubiKey Policy", ext, &buf)
+				for _, p := range policies {
+					buf.WriteString(fmt.Sprintf("%16s%s\n", "", p))
+				}
+			case ext.Id.Equal(oidYubicoFormfactor):
+				printExtensionHeader("X509v3 YubiKey Formfactor", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16s%s\n", "", yubicoFormfactor(ext.Value)))
+			case ext.Id.Equal(oidYubicoFipsCertified):
+				printExtensionHeader("X509v3 YubiKey Certification", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16sFIPS Certified\n", ""))
+			case ext.Id.Equal(oidYubicoCspnCertified):
+				printExtensionHeader("X509v3 YubiKey Certification", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16sCSPN Certified\n", ""))
+			default:
 				buf.WriteString(fmt.Sprintf("%12s%s:", "", ext.Id.String()))
 				if ext.Critical {
 					buf.WriteString(" critical\n")
