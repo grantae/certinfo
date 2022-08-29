@@ -22,6 +22,8 @@ import (
 	ctx509 "github.com/google/certificate-transparency-go/x509"
 	ctutil "github.com/google/certificate-transparency-go/x509util"
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/cryptobyte"
+	cryptobyte_asn1 "golang.org/x/crypto/cryptobyte/asn1"
 )
 
 // Time formats used
@@ -32,14 +34,16 @@ const (
 
 // Extra ASN1 OIDs that we may need to handle
 var (
-	oidEmailAddress                   = []int{1, 2, 840, 113549, 1, 9, 1}
-	oidDomainComponent                = []int{0, 9, 2342, 19200300, 100, 1, 25}
-	oidUserID                         = []int{0, 9, 2342, 19200300, 100, 1, 1}
-	oidExtensionAuthorityInfoAccess   = []int{1, 3, 6, 1, 5, 5, 7, 1, 1}
-	oidNSComment                      = []int{2, 16, 840, 1, 113730, 1, 13}
+	oidEmailAddress                   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 1}
+	oidDomainComponent                = asn1.ObjectIdentifier{0, 9, 2342, 19200300, 100, 1, 25}
+	oidUserID                         = asn1.ObjectIdentifier{0, 9, 2342, 19200300, 100, 1, 1}
+	oidExtensionAuthorityInfoAccess   = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 1, 1}
+	oidNSComment                      = asn1.ObjectIdentifier{2, 16, 840, 1, 113730, 1, 13}
 	oidStepProvisioner                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64, 1}
 	oidStepCertificateAuthority       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64, 2}
 	oidSignedCertificateTimestampList = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 11129, 2, 4, 2}
+	oidPermanentIdentifier            = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 8, 3}
+	oidHardwareModuleNameIdentifier   = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 8, 4}
 )
 
 // stepProvisionerType are string representation of the provisioner type (int)
@@ -75,6 +79,50 @@ type stepCertificateAuthority struct {
 	Type          string
 	CertificateID string   `asn1:"optional,omitempty"`
 	KeyValuePairs []string `asn1:"optional,omitempty"`
+}
+
+// permanentIdentifier is defined in RFC 4043 as an optional feature that
+// may be used by a CA to indicate that two or more certificates relate to the
+// same entity.
+//
+// In device attestation this SAN will contain the UDID (Unique Device
+// IDentifier) or serial number of the device.
+//
+// See https://tools.ietf.org/html/rfc4043
+//
+//	PermanentIdentifier ::= SEQUENCE {
+//	  identifierValue    UTF8String OPTIONAL,
+//	  assigner           OBJECT IDENTIFIER OPTIONAL
+//	}
+type permanentIdentifier struct {
+	IdentifierValue string                `asn1:"utf8,optional"`
+	Assigner        asn1.ObjectIdentifier `asn1:"optional"`
+}
+
+// hardwareModuleName is defined in RFC 4108 as an optional feature that by be
+// used to identify a hardware module.
+//
+// The OID defined for this SAN is "1.3.6.1.5.5.7.8.4".
+//
+// See https://www.rfc-editor.org/rfc/rfc4108#section-5
+//
+//	HardwareModuleName ::= SEQUENCE {
+//	  hwType OBJECT IDENTIFIER,
+//	  hwSerialNum OCTET STRING
+//	}
+type hardwareModuleName struct {
+	Type         asn1.ObjectIdentifier
+	SerialNumber []byte `asn1:"tag:4"`
+}
+
+// RFC 5280 - https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.6
+//
+//	OtherName ::= SEQUENCE {
+//	  type-id    OBJECT IDENTIFIER,
+//	  value      [0] EXPLICIT ANY DEFINED BY type-id }
+type otherName struct {
+	TypeID asn1.ObjectIdentifier
+	Value  asn1.RawValue
 }
 
 // publicKeyInfo allows unmarshaling the public key
@@ -286,6 +334,24 @@ func printSubjKeyID(ext pkix.Extension, buf *bytes.Buffer) error {
 	return nil
 }
 
+func forEachSAN(der cryptobyte.String, callback func(tag int, data []byte) error) error {
+	if !der.ReadASN1(&der, cryptobyte_asn1.SEQUENCE) {
+		return errors.New("invalid subject alternative names")
+	}
+	for !der.Empty() {
+		var san cryptobyte.String
+		var tag cryptobyte_asn1.Tag
+		if !der.ReadAnyASN1Element(&san, &tag) {
+			return errors.New("invalid subject alternative name")
+		}
+		if err := callback(int(tag^0x80), san); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ipAddresses []net.IP, uris []*url.URL, buf *bytes.Buffer) error {
 	// subjectAltName: RFC 5280, 4.2.1.6
 	// TODO: Currently crypto/x509 only extracts DNS, email, and IP addresses.
@@ -324,7 +390,42 @@ func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ip
 		}
 		buf.WriteString("\n")
 	}
-	return nil
+
+	// Parse other names ignoring errors
+	return forEachSAN(ext.Value, func(tag int, data []byte) error {
+		if tag == 0 || tag == 0x20 {
+			var on otherName
+			if rest, err := asn1.UnmarshalWithParams(data, &on, "tag:0"); err != nil || len(rest) > 0 {
+				return nil // ignore SAN
+			}
+
+			switch {
+			case on.TypeID.Equal(oidPermanentIdentifier):
+				var pi permanentIdentifier
+				if _, err := asn1.Unmarshal(on.Value.Bytes, &pi); err == nil {
+					if pi.IdentifierValue != "" {
+						buf.WriteString(fmt.Sprintf("%16sPermanent Identifier: %s", "", pi.IdentifierValue))
+					}
+					if len(pi.Assigner) > 0 {
+						buf.WriteString(fmt.Sprintf(", Assigner: %s", pi.Assigner.String()))
+					}
+					buf.WriteString("\n")
+				}
+			case on.TypeID.Equal(oidHardwareModuleNameIdentifier):
+				var hmn hardwareModuleName
+				if _, err := asn1.Unmarshal(on.Value.Bytes, &hmn); err == nil {
+					buf.WriteString(fmt.Sprintf("%16sHardware Module Name: Type: %s", "", hmn.Type.String()))
+					buf.WriteString(fmt.Sprintf(", Serial Number: %s", hmn.SerialNumber))
+					buf.WriteString("\n")
+				}
+			default:
+				buf.WriteString(fmt.Sprintf("%16sOtherName: Type: %s", "", on.TypeID))
+				buf.WriteString(fmt.Sprintf(", Value: 0x%x", on.Value.Bytes))
+				buf.WriteString("\n")
+			}
+		}
+		return nil
+	})
 }
 
 func printSignature(sigAlgo x509.SignatureAlgorithm, sig []byte, buf *bytes.Buffer) {

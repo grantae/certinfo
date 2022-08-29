@@ -54,7 +54,8 @@ func yubicoPolicies(v []byte) []string {
 	}
 	policies := make([]string, 0, 2)
 	for i, b := range v {
-		if i == 0 {
+		switch i {
+		case 0:
 			switch b {
 			case 1:
 				policies = append(policies, "Pin policy: never")
@@ -65,7 +66,7 @@ func yubicoPolicies(v []byte) []string {
 			default:
 				policies = append(policies, fmt.Sprintf("Pin policy: unknown (0x%x)", b))
 			}
-		} else if i == 1 {
+		case 1:
 			switch b {
 			case 1:
 				policies = append(policies, "Touch policy: never")
@@ -76,8 +77,8 @@ func yubicoPolicies(v []byte) []string {
 			default:
 				policies = append(policies, fmt.Sprintf("Touch policy: unknown (0x%x)", b))
 			}
-		} else {
-			break
+		default:
+			return policies
 		}
 	}
 	return policies
