@@ -43,7 +43,8 @@ var (
 	oidStepCertificateAuthority       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64, 2}
 	oidSignedCertificateTimestampList = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 11129, 2, 4, 2}
 	oidPermanentIdentifier            = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 8, 3}
-	oidHardwareModuleNameIdentifier   = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 8, 4}
+	oidHardwareModuleName             = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 8, 4}
+	oidUserPrincipalName              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 20, 2, 3}
 )
 
 // stepProvisionerType are string representation of the provisioner type (int)
@@ -81,6 +82,16 @@ type stepCertificateAuthority struct {
 	KeyValuePairs []string `asn1:"optional,omitempty"`
 }
 
+// RFC 5280 - https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.6
+//
+//	OtherName ::= SEQUENCE {
+//	  type-id    OBJECT IDENTIFIER,
+//	  value      [0] EXPLICIT ANY DEFINED BY type-id }
+type otherName struct {
+	TypeID asn1.ObjectIdentifier
+	Value  asn1.RawValue
+}
+
 // permanentIdentifier is defined in RFC 4043 as an optional feature that
 // may be used by a CA to indicate that two or more certificates relate to the
 // same entity.
@@ -115,14 +126,15 @@ type hardwareModuleName struct {
 	SerialNumber []byte `asn1:"tag:4"`
 }
 
-// RFC 5280 - https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.6
+// userPrincipalName or UPN is Microsoft Active Directory attribute that you typically
+// see expressed as an email address.
 //
-//	OtherName ::= SEQUENCE {
-//	  type-id    OBJECT IDENTIFIER,
-//	  value      [0] EXPLICIT ANY DEFINED BY type-id }
-type otherName struct {
-	TypeID asn1.ObjectIdentifier
-	Value  asn1.RawValue
+// The userPrincipalName is defined in MSDN,
+// https://docs.microsoft.com/en-us/windows/win32/adschema/a-userprincipalname
+//
+// The OID defined for this SAN is "1.3.6.1.4.1.311.20.2.3".
+type userPrincipalName struct {
+	UPN string `asn1:"utf8"`
 }
 
 // publicKeyInfo allows unmarshaling the public key
@@ -352,6 +364,12 @@ func forEachSAN(der cryptobyte.String, callback func(tag int, data []byte) error
 	return nil
 }
 
+func printOtherName(on otherName, buf *bytes.Buffer) {
+	buf.WriteString(fmt.Sprintf("%16sOtherName: Type: %s", "", on.TypeID))
+	buf.WriteString(fmt.Sprintf(", Value: 0x%x", on.Value.Bytes))
+	buf.WriteString("\n")
+}
+
 func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ipAddresses []net.IP, uris []*url.URL, buf *bytes.Buffer) error {
 	// subjectAltName: RFC 5280, 4.2.1.6
 	// TODO: Currently crypto/x509 only extracts DNS, email, and IP addresses.
@@ -402,26 +420,36 @@ func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ip
 			switch {
 			case on.TypeID.Equal(oidPermanentIdentifier):
 				var pi permanentIdentifier
-				if _, err := asn1.Unmarshal(on.Value.Bytes, &pi); err == nil {
-					if pi.IdentifierValue != "" {
-						buf.WriteString(fmt.Sprintf("%16sPermanent Identifier: %s", "", pi.IdentifierValue))
-					}
-					if len(pi.Assigner) > 0 {
-						buf.WriteString(fmt.Sprintf(", Assigner: %s", pi.Assigner.String()))
-					}
-					buf.WriteString("\n")
+				if _, err := asn1.Unmarshal(on.Value.Bytes, &pi); err != nil {
+					printOtherName(on, buf)
+					return nil
 				}
-			case on.TypeID.Equal(oidHardwareModuleNameIdentifier):
-				var hmn hardwareModuleName
-				if _, err := asn1.Unmarshal(on.Value.Bytes, &hmn); err == nil {
-					buf.WriteString(fmt.Sprintf("%16sHardware Module Name: Type: %s", "", hmn.Type.String()))
-					buf.WriteString(fmt.Sprintf(", Serial Number: %s", hmn.SerialNumber))
-					buf.WriteString("\n")
+				if pi.IdentifierValue != "" {
+					buf.WriteString(fmt.Sprintf("%16sPermanent Identifier: %s", "", pi.IdentifierValue))
 				}
-			default:
-				buf.WriteString(fmt.Sprintf("%16sOtherName: Type: %s", "", on.TypeID))
-				buf.WriteString(fmt.Sprintf(", Value: 0x%x", on.Value.Bytes))
+				if len(pi.Assigner) > 0 {
+					buf.WriteString(fmt.Sprintf(", Assigner: %s", pi.Assigner.String()))
+				}
 				buf.WriteString("\n")
+			case on.TypeID.Equal(oidHardwareModuleName):
+				var hmn hardwareModuleName
+				if _, err := asn1.Unmarshal(on.Value.Bytes, &hmn); err != nil {
+					printOtherName(on, buf)
+					return nil
+				}
+				buf.WriteString(fmt.Sprintf("%16sHardware Module Name: Type: %s", "", hmn.Type.String()))
+				buf.WriteString(fmt.Sprintf(", Serial Number: %s", hmn.SerialNumber))
+				buf.WriteString("\n")
+			case on.TypeID.Equal(oidUserPrincipalName):
+				var upn userPrincipalName
+				if _, err := asn1.UnmarshalWithParams(on.Value.Bytes, &upn.UPN, "utf8"); err != nil {
+					printOtherName(on, buf)
+					return nil
+				}
+				buf.WriteString(fmt.Sprintf("%16sUPN:%s", "", upn.UPN))
+				buf.WriteString("\n")
+			default:
+				printOtherName(on, buf)
 			}
 		}
 		return nil
