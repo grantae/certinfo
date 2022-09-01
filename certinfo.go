@@ -96,8 +96,7 @@ type otherName struct {
 // may be used by a CA to indicate that two or more certificates relate to the
 // same entity.
 //
-// In device attestation this SAN will contain the UDID (Unique Device
-// IDentifier) or serial number of the device.
+// The OID defined for this SAN is "1.3.6.1.5.5.7.8.3".
 //
 // See https://www.rfc-editor.org/rfc/rfc4043
 //
