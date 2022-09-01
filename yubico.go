@@ -58,7 +58,7 @@ func yubicoPolicies(v []byte) []string {
 		case 0:
 			switch b {
 			case 1:
-				policies = append(policies, "Pin policy: never")
+				policies = append(policies, "PIN policy: never")
 			case 2:
 				policies = append(policies, "Pin policy: once per session")
 			case 3:
