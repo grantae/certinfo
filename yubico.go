@@ -60,11 +60,11 @@ func yubicoPolicies(v []byte) []string {
 			case 1:
 				policies = append(policies, "PIN policy: never")
 			case 2:
-				policies = append(policies, "Pin policy: once per session")
+				policies = append(policies, "PIN policy: once per session")
 			case 3:
-				policies = append(policies, "Pin policy: always")
+				policies = append(policies, "PIN policy: always")
 			default:
-				policies = append(policies, fmt.Sprintf("Pin policy: unknown (0x%x)", b))
+				policies = append(policies, fmt.Sprintf("PIN policy: unknown (0x%02x)", b))
 			}
 		case 1:
 			switch b {
@@ -75,7 +75,7 @@ func yubicoPolicies(v []byte) []string {
 			case 3:
 				policies = append(policies, "Touch policy: always")
 			default:
-				policies = append(policies, fmt.Sprintf("Touch policy: unknown (0x%x)", b))
+				policies = append(policies, fmt.Sprintf("Touch policy: unknown (0x%02x)", b))
 			}
 		default:
 			return policies
@@ -84,22 +84,26 @@ func yubicoPolicies(v []byte) []string {
 	return policies
 }
 
-func yubicoFormfactor(v []byte) string {
+func yubicoFormfactor(v []byte) (s string) {
 	if len(v) == 0 {
 		return "unknown"
 	}
 	switch v[0] {
 	case 1, 81:
-		return "USB-A Keychain"
+		s = "USB-A Keychain"
 	case 2, 82:
-		return "USB-A Nano"
+		s = "USB-A Nano"
 	case 3, 83:
-		return "USB-C Keychain"
+		s = "USB-C Keychain"
 	case 4, 84:
-		return "USB-C Nano"
+		s = "USB-C Nano"
 	case 5, 85:
-		return "Lightning or USB-C"
+		s = "Lightning or USB-C"
 	default:
-		return "unknown"
+		return fmt.Sprintf("unknown (0x%02x)", v[0])
 	}
+	if v[0] > 80 {
+		s += " (FIPS)"
+	}
+	return
 }
