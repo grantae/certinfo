@@ -936,7 +936,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					printSCTSignature(sct.Signature, &buf)
 				}
 			case ext.Id.Equal(oidYubicoFirmwareVersion):
-				printExtensionHeader("X509v3 YubiKey FirmwareVersion", ext, &buf)
+				printExtensionHeader("X509v3 YubiKey Firmware Version", ext, &buf)
 				buf.WriteString(fmt.Sprintf("%16s%s\n", "", yubicoVersion(ext.Value)))
 			case ext.Id.Equal(oidYubicoSerialNumber):
 				var serialNumber int
