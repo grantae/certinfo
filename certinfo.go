@@ -42,6 +42,16 @@ var (
 	oidSignedCertificateTimestampList = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 11129, 2, 4, 2}
 )
 
+// Sigstore OIDs
+var (
+	certExtensionOIDCIssuer               = []int{1, 3, 6, 1, 4, 1, 57264, 1, 1}
+	certExtensionGithubWorkflowTrigger    = []int{1, 3, 6, 1, 4, 1, 57264, 1, 2}
+	certExtensionGithubWorkflowSha        = []int{1, 3, 6, 1, 4, 1, 57264, 1, 3}
+	certExtensionGithubWorkflowName       = []int{1, 3, 6, 1, 4, 1, 57264, 1, 4}
+	certExtensionGithubWorkflowRepository = []int{1, 3, 6, 1, 4, 1, 57264, 1, 5}
+	certExtensionGithubWorkflowRef        = []int{1, 3, 6, 1, 4, 1, 57264, 1, 6}
+)
+
 // stepProvisionerType are string representation of the provisioner type (int)
 // in the step provisioner extension.
 var stepProvisionerType = [...]string{
@@ -792,6 +802,24 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					// buf.WriteString(fmt.Sprintf("%20sExtensions: %v\n", "", sct.Extensions))
 					printSCTSignature(sct.Signature, &buf)
 				}
+			} else if ext.Id.Equal(certExtensionOIDCIssuer) {
+				oidcIssuer := string(ext.Value) // TODO: do ASN1 decoding?
+				buf.WriteString(fmt.Sprintf("%12sFulcio OIDC Issuer:\n%16s%s\n", "", "", oidcIssuer))
+			} else if ext.Id.Equal(certExtensionGithubWorkflowTrigger) {
+				githubWorkflowTrigger := string(ext.Value)
+				buf.WriteString(fmt.Sprintf("%12sFulcio GitHub Workflow Trigger:\n%16s%s\n", "", "", githubWorkflowTrigger))
+			} else if ext.Id.Equal(certExtensionGithubWorkflowSha) {
+				githubWorkflowSha := string(ext.Value)
+				buf.WriteString(fmt.Sprintf("%12sFulcio GitHub Workflow SHA Hash:\n%16s%s\n", "", "", githubWorkflowSha))
+			} else if ext.Id.Equal(certExtensionGithubWorkflowName) {
+				githubWorkflowName := string(ext.Value)
+				buf.WriteString(fmt.Sprintf("%12sFulcio GitHub Workflow Name:\n%16s%s\n", "", "", githubWorkflowName))
+			} else if ext.Id.Equal(certExtensionGithubWorkflowRepository) {
+				githubWorkflowRepository := string(ext.Value)
+				buf.WriteString(fmt.Sprintf("%12sFulcio GitHub Workflow Repository:\n%16s%s\n", "", "", githubWorkflowRepository))
+			} else if ext.Id.Equal(certExtensionGithubWorkflowRef) {
+				githubWorkflowRef := string(ext.Value)
+				buf.WriteString(fmt.Sprintf("%12sFulcio GitHub Workflow Ref:\n%16s%s\n", "", "", githubWorkflowRef))
 			} else {
 				buf.WriteString(fmt.Sprintf("%12s%s:", "", ext.Id.String()))
 				if ext.Critical {
