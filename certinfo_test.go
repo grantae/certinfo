@@ -22,7 +22,7 @@ func testPair(t *testing.T, certFile, refFile string, inputType InputType) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	block, rest := pem.Decode([]byte(pemData))
+	block, rest := pem.Decode(pemData)
 	if block == nil || len(rest) > 0 {
 		t.Fatal("Certificate decoding error")
 	}
@@ -67,7 +67,7 @@ func testPairShort(t *testing.T, certFile, refFile string, inputType InputType) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	block, rest := pem.Decode([]byte(pemData))
+	block, rest := pem.Decode(pemData)
 	if block == nil || len(rest) > 0 {
 		t.Fatal("Certificate decoding error")
 	}

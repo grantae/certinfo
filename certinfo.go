@@ -2,7 +2,7 @@ package certinfo
 
 import (
 	"bytes"
-	"crypto/dsa" // nolint:staticcheck // used to inspect key
+	"crypto/dsa" //nolint:staticcheck // used to inspect key
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
@@ -413,7 +413,7 @@ func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ip
 		if tag == 0 || tag == 0x20 {
 			var on otherName
 			if rest, err := asn1.UnmarshalWithParams(data, &on, "tag:0"); err != nil || len(rest) > 0 {
-				return nil // ignore SAN
+				return nil //nolint:nilerr // ignore errors as instructed above
 			}
 
 			switch {
@@ -421,7 +421,7 @@ func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ip
 				var pi permanentIdentifier
 				if _, err := asn1.Unmarshal(on.Value.Bytes, &pi); err != nil {
 					printOtherName(on, buf)
-					return nil
+					return nil //nolint:nilerr // ignore errors as instructed above
 				}
 				if pi.IdentifierValue != "" {
 					buf.WriteString(fmt.Sprintf("%16sPermanent Identifier: %s", "", pi.IdentifierValue))
@@ -434,7 +434,7 @@ func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ip
 				var hmn hardwareModuleName
 				if _, err := asn1.Unmarshal(on.Value.Bytes, &hmn); err != nil {
 					printOtherName(on, buf)
-					return nil
+					return nil //nolint:nilerr // ignore errors as instructed above
 				}
 				buf.WriteString(fmt.Sprintf("%16sHardware Module Name: Type: %s", "", hmn.Type.String()))
 				buf.WriteString(fmt.Sprintf(", Serial Number: %s", hmn.SerialNumber))
@@ -443,7 +443,7 @@ func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ip
 				var upn userPrincipalName
 				if _, err := asn1.UnmarshalWithParams(on.Value.Bytes, &upn.UPN, "utf8"); err != nil {
 					printOtherName(on, buf)
-					return nil
+					return nil //nolint:nilerr // ignore errors as instructed above
 				}
 				buf.WriteString(fmt.Sprintf("%16sUPN:%s", "", upn.UPN))
 				buf.WriteString("\n")
@@ -560,7 +560,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 	if cert.Version == 3 && len(cert.Extensions) > 0 {
 		buf.WriteString(fmt.Sprintf("%8sX509v3 extensions:\n", ""))
 		for _, ext := range cert.Extensions {
-			// nolint:gocritic // avoid nested switch statements
+			//nolint:gocritic // avoid nested switch statements
 			if len(ext.Id) == 4 && ext.Id[0] == 2 && ext.Id[1] == 5 && ext.Id[2] == 29 {
 				switch ext.Id[3] {
 				case 14:
