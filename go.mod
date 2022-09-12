@@ -1,6 +1,6 @@
 module github.com/smallstep/certinfo
 
-go 1.17
+go 1.18
 
 require (
 	github.com/google/certificate-transparency-go v1.1.2
