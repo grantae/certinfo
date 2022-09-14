@@ -18,12 +18,12 @@ build: ;
 # Bootstrapping
 #########################################
 
-bootstra%:
+bootstrap:
 	$Q curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin latest
 	$Q go install golang.org/x/vuln/cmd/govulncheck@latest
 	$Q go install gotest.tools/gotestsum@latest
 
-.PHONY: bootstra%
+.PHONY: bootstrap
 
 #########################################
 # Test
