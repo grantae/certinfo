@@ -2,7 +2,7 @@ package certinfo
 
 import (
 	"bytes"
-	"crypto/dsa" // nolint:staticcheck // used to inspect key
+	"crypto/dsa" //nolint:staticcheck // used to inspect key
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
@@ -22,6 +22,8 @@ import (
 	ctx509 "github.com/google/certificate-transparency-go/x509"
 	ctutil "github.com/google/certificate-transparency-go/x509util"
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/cryptobyte"
+	cryptobyte_asn1 "golang.org/x/crypto/cryptobyte/asn1"
 )
 
 // Time formats used
@@ -32,14 +34,17 @@ const (
 
 // Extra ASN1 OIDs that we may need to handle
 var (
-	oidEmailAddress                   = []int{1, 2, 840, 113549, 1, 9, 1}
-	oidDomainComponent                = []int{0, 9, 2342, 19200300, 100, 1, 25}
-	oidUserID                         = []int{0, 9, 2342, 19200300, 100, 1, 1}
-	oidExtensionAuthorityInfoAccess   = []int{1, 3, 6, 1, 5, 5, 7, 1, 1}
-	oidNSComment                      = []int{2, 16, 840, 1, 113730, 1, 13}
+	oidEmailAddress                   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 1}
+	oidDomainComponent                = asn1.ObjectIdentifier{0, 9, 2342, 19200300, 100, 1, 25}
+	oidUserID                         = asn1.ObjectIdentifier{0, 9, 2342, 19200300, 100, 1, 1}
+	oidExtensionAuthorityInfoAccess   = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 1, 1}
+	oidNSComment                      = asn1.ObjectIdentifier{2, 16, 840, 1, 113730, 1, 13}
 	oidStepProvisioner                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64, 1}
 	oidStepCertificateAuthority       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64, 2}
 	oidSignedCertificateTimestampList = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 11129, 2, 4, 2}
+	oidPermanentIdentifier            = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 8, 3}
+	oidHardwareModuleName             = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 8, 4}
+	oidUserPrincipalName              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 20, 2, 3}
 )
 
 // Sigstore (Fulcio) OIDs as documented here: https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md
@@ -86,6 +91,60 @@ type stepCertificateAuthority struct {
 	Type          string
 	CertificateID string   `asn1:"optional,omitempty"`
 	KeyValuePairs []string `asn1:"optional,omitempty"`
+}
+
+// RFC 5280 - https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.6
+//
+//	OtherName ::= SEQUENCE {
+//	  type-id    OBJECT IDENTIFIER,
+//	  value      [0] EXPLICIT ANY DEFINED BY type-id }
+type otherName struct {
+	TypeID asn1.ObjectIdentifier
+	Value  asn1.RawValue
+}
+
+// permanentIdentifier is defined in RFC 4043 as an optional feature that
+// may be used by a CA to indicate that two or more certificates relate to the
+// same entity.
+//
+// The OID defined for this SAN is "1.3.6.1.5.5.7.8.3".
+//
+// See https://www.rfc-editor.org/rfc/rfc4043
+//
+//	PermanentIdentifier ::= SEQUENCE {
+//	  identifierValue    UTF8String OPTIONAL,
+//	  assigner           OBJECT IDENTIFIER OPTIONAL
+//	}
+type permanentIdentifier struct {
+	IdentifierValue string                `asn1:"utf8,optional"`
+	Assigner        asn1.ObjectIdentifier `asn1:"optional"`
+}
+
+// hardwareModuleName is defined in RFC 4108 as an optional feature that by be
+// used to identify a hardware module.
+//
+// The OID defined for this SAN is "1.3.6.1.5.5.7.8.4".
+//
+// See https://www.rfc-editor.org/rfc/rfc4108#section-5
+//
+//	HardwareModuleName ::= SEQUENCE {
+//	  hwType OBJECT IDENTIFIER,
+//	  hwSerialNum OCTET STRING
+//	}
+type hardwareModuleName struct {
+	Type         asn1.ObjectIdentifier
+	SerialNumber []byte `asn1:"tag:4"`
+}
+
+// userPrincipalName or UPN is Microsoft Active Directory attribute that you typically
+// see expressed as an email address.
+//
+// The userPrincipalName is defined in MSDN,
+// https://docs.microsoft.com/en-us/windows/win32/adschema/a-userprincipalname
+//
+// The OID defined for this SAN is "1.3.6.1.4.1.311.20.2.3".
+type userPrincipalName struct {
+	UPN string `asn1:"utf8"`
 }
 
 // publicKeyInfo allows unmarshaling the public key
@@ -310,6 +369,30 @@ func printSubjKeyID(ext pkix.Extension, buf *bytes.Buffer) error {
 	return nil
 }
 
+func forEachSAN(der cryptobyte.String, callback func(tag int, data []byte) error) error {
+	if !der.ReadASN1(&der, cryptobyte_asn1.SEQUENCE) {
+		return errors.New("invalid subject alternative names")
+	}
+	for !der.Empty() {
+		var san cryptobyte.String
+		var tag cryptobyte_asn1.Tag
+		if !der.ReadAnyASN1Element(&san, &tag) {
+			return errors.New("invalid subject alternative name")
+		}
+		if err := callback(int(tag^0x80), san); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func printOtherName(on otherName, buf *bytes.Buffer) {
+	buf.WriteString(fmt.Sprintf("%16sOtherName: Type: %s", "", on.TypeID))
+	buf.WriteString(fmt.Sprintf(", Value: 0x%x", on.Value.Bytes))
+	buf.WriteString("\n")
+}
+
 func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ipAddresses []net.IP, uris []*url.URL, buf *bytes.Buffer) error {
 	// subjectAltName: RFC 5280, 4.2.1.6
 	// TODO: Currently crypto/x509 only extracts DNS, email, and IP addresses.
@@ -348,7 +431,52 @@ func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ip
 		}
 		buf.WriteString("\n")
 	}
-	return nil
+
+	// Parse other names ignoring errors
+	return forEachSAN(ext.Value, func(tag int, data []byte) error {
+		if tag == 0 || tag == 0x20 {
+			var on otherName
+			if rest, err := asn1.UnmarshalWithParams(data, &on, "tag:0"); err != nil || len(rest) > 0 {
+				return nil //nolint:nilerr // ignore errors as instructed above
+			}
+
+			switch {
+			case on.TypeID.Equal(oidPermanentIdentifier):
+				var pi permanentIdentifier
+				if _, err := asn1.Unmarshal(on.Value.Bytes, &pi); err != nil {
+					printOtherName(on, buf)
+					return nil //nolint:nilerr // ignore errors as instructed above
+				}
+				if pi.IdentifierValue != "" {
+					buf.WriteString(fmt.Sprintf("%16sPermanent Identifier: %s", "", pi.IdentifierValue))
+				}
+				if len(pi.Assigner) > 0 {
+					buf.WriteString(fmt.Sprintf(", Assigner: %s", pi.Assigner.String()))
+				}
+				buf.WriteString("\n")
+			case on.TypeID.Equal(oidHardwareModuleName):
+				var hmn hardwareModuleName
+				if _, err := asn1.Unmarshal(on.Value.Bytes, &hmn); err != nil {
+					printOtherName(on, buf)
+					return nil //nolint:nilerr // ignore errors as instructed above
+				}
+				buf.WriteString(fmt.Sprintf("%16sHardware Module Name: Type: %s", "", hmn.Type.String()))
+				buf.WriteString(fmt.Sprintf(", Serial Number: %s", hmn.SerialNumber))
+				buf.WriteString("\n")
+			case on.TypeID.Equal(oidUserPrincipalName):
+				var upn userPrincipalName
+				if _, err := asn1.UnmarshalWithParams(on.Value.Bytes, &upn.UPN, "utf8"); err != nil {
+					printOtherName(on, buf)
+					return nil //nolint:nilerr // ignore errors as instructed above
+				}
+				buf.WriteString(fmt.Sprintf("%16sUPN:%s", "", upn.UPN))
+				buf.WriteString("\n")
+			default:
+				printOtherName(on, buf)
+			}
+		}
+		return nil
+	})
 }
 
 func printSignature(sigAlgo x509.SignatureAlgorithm, sig []byte, buf *bytes.Buffer) {
@@ -381,6 +509,15 @@ func printSCTSignature(sig ct.DigitallySigned, buf *bytes.Buffer) {
 		}
 	}
 	buf.WriteString("\n")
+}
+
+func printExtensionHeader(name string, ext pkix.Extension, buf *bytes.Buffer) {
+	buf.WriteString(fmt.Sprintf("%12s%s:", "", name))
+	if ext.Critical {
+		buf.WriteString(" critical\n")
+	} else {
+		buf.WriteString("\n")
+	}
 }
 
 // CertificateShortText returns the human-readable string representation of the
@@ -447,7 +584,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 	if cert.Version == 3 && len(cert.Extensions) > 0 {
 		buf.WriteString(fmt.Sprintf("%8sX509v3 extensions:\n", ""))
 		for _, ext := range cert.Extensions {
-			// nolint:gocritic // avoid nested switch statements
+			//nolint:gocritic // avoid nested switch statements
 			if len(ext.Id) == 4 && ext.Id[0] == 2 && ext.Id[1] == 5 && ext.Id[2] == 29 {
 				switch ext.Id[3] {
 				case 14:
@@ -692,7 +829,13 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				if err != nil {
 					return "", err
 				}
-			} else if ext.Id.Equal(oidExtensionAuthorityInfoAccess) {
+
+				// Continue to next extension
+				continue
+			}
+
+			switch {
+			case ext.Id.Equal(oidExtensionAuthorityInfoAccess):
 				// authorityInfoAccess: RFC 5280, 4.2.2.1
 				buf.WriteString(fmt.Sprintf("%12sAuthority Information Access:", ""))
 				if ext.Critical {
@@ -714,7 +857,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					}
 					buf.WriteString("\n")
 				}
-			} else if ext.Id.Equal(oidNSComment) {
+			case ext.Id.Equal(oidNSComment):
 				// Netscape comment
 				var comment string
 				rest, err := asn1.Unmarshal(ext.Value, &comment)
@@ -726,7 +869,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				} else {
 					buf.WriteString(fmt.Sprintf("%12sNetscape Comment:\n%16s%s\n", "", "", comment))
 				}
-			} else if ext.Id.Equal(oidStepProvisioner) {
+			case ext.Id.Equal(oidStepProvisioner):
 				buf.WriteString(fmt.Sprintf("%12sX509v3 Step Provisioner:", ""))
 				if ext.Critical {
 					buf.WriteString(" critical\n")
@@ -760,7 +903,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					}
 					buf.WriteString(fmt.Sprintf("%16s%s: %s\n", "", key, value))
 				}
-			} else if ext.Id.Equal(oidStepCertificateAuthority) {
+			case ext.Id.Equal(oidStepCertificateAuthority):
 				buf.WriteString(fmt.Sprintf("%12sX509v3 Step Registration Authority:", ""))
 				if ext.Critical {
 					buf.WriteString(" critical\n")
@@ -784,7 +927,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					}
 					buf.WriteString(fmt.Sprintf("%16s%s: %s\n", "", key, value))
 				}
-			} else if ext.Id.Equal(oidSignedCertificateTimestampList) {
+			case ext.Id.Equal(oidSignedCertificateTimestampList):
 				buf.WriteString(fmt.Sprintf("%12sRFC6962 Certificate Transparency SCT:", ""))
 				if ext.Critical {
 					buf.WriteString(" critical\n")
@@ -816,25 +959,53 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					// buf.WriteString(fmt.Sprintf("%20sExtensions: %v\n", "", sct.Extensions))
 					printSCTSignature(sct.Signature, &buf)
 				}
-			} else if ext.Id.Equal(oidSigstoreOIDCIssuer) {
-				oidcIssuer := string(ext.Value)
-				buf.WriteString(fmt.Sprintf("%12sFulcio OIDC Issuer:\n%16s%s\n", "", "", oidcIssuer))
-			} else if ext.Id.Equal(oidSigstoreGithubWorkflowTrigger) {
-				githubWorkflowTrigger := string(ext.Value)
-				buf.WriteString(fmt.Sprintf("%12sFulcio GitHub Workflow Trigger:\n%16s%s\n", "", "", githubWorkflowTrigger))
-			} else if ext.Id.Equal(oidSigstoreGithubWorkflowSha) {
-				githubWorkflowSha := string(ext.Value)
-				buf.WriteString(fmt.Sprintf("%12sFulcio GitHub Workflow SHA Hash:\n%16s%s\n", "", "", githubWorkflowSha))
-			} else if ext.Id.Equal(oidSigstoreGithubWorkflowName) {
-				githubWorkflowName := string(ext.Value)
-				buf.WriteString(fmt.Sprintf("%12sFulcio GitHub Workflow Name:\n%16s%s\n", "", "", githubWorkflowName))
-			} else if ext.Id.Equal(oidSigstoreGithubWorkflowRepository) {
-				githubWorkflowRepository := string(ext.Value)
-				buf.WriteString(fmt.Sprintf("%12sFulcio GitHub Workflow Repository:\n%16s%s\n", "", "", githubWorkflowRepository))
-			} else if ext.Id.Equal(oidSigstoreGithubWorkflowRef) {
-				githubWorkflowRef := string(ext.Value)
-				buf.WriteString(fmt.Sprintf("%12sFulcio GitHub Workflow Ref:\n%16s%s\n", "", "", githubWorkflowRef))
-			} else if ext.Id.Equal(oidSigstoreOtherName) {
+			case ext.Id.Equal(oidYubicoFirmwareVersion):
+				printExtensionHeader("X509v3 YubiKey Firmware Version", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16s%s\n", "", yubicoVersion(ext.Value)))
+			case ext.Id.Equal(oidYubicoSerialNumber):
+				var serialNumber int
+				rest, err := asn1.Unmarshal(ext.Value, &serialNumber)
+				if err != nil || len(rest) > 0 {
+					return "", errors.New("certinfo: Error parsing OID " + ext.Id.String())
+				}
+				printExtensionHeader("X509v3 YubiKey Serial Number", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16s%d\n", "", serialNumber))
+			case ext.Id.Equal(oidYubicoPolicy):
+				policies := yubicoPolicies(ext.Value)
+				printExtensionHeader("X509v3 YubiKey Policy", ext, &buf)
+				for _, p := range policies {
+					buf.WriteString(fmt.Sprintf("%16s%s\n", "", p))
+				}
+			case ext.Id.Equal(oidYubicoFormfactor):
+				printExtensionHeader("X509v3 YubiKey Formfactor", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16s%s\n", "", yubicoFormfactor(ext.Value)))
+			case ext.Id.Equal(oidYubicoFipsCertified):
+				printExtensionHeader("X509v3 YubiKey Certification", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16sFIPS Certified\n", ""))
+			case ext.Id.Equal(oidYubicoCspnCertified):
+				printExtensionHeader("X509v3 YubiKey Certification", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16sCSPN Certified\n", ""))
+			case ext.Id.Equal(oidSigstoreOIDCIssuer):
+				printExtensionHeader("Fulcio OIDC Issuer", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
+			case ext.Id.Equal(oidSigstoreGithubWorkflowTrigger):
+				printExtensionHeader("Fulcio GitHub Workflow Trigger", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
+			case ext.Id.Equal(oidSigstoreGithubWorkflowSha):
+				printExtensionHeader("Fulcio GitHub Workflow SHA Hash", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
+			case ext.Id.Equal(oidSigstoreGithubWorkflowName):
+				printExtensionHeader("Fulcio GitHub Workflow Name", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
+			case ext.Id.Equal(oidSigstoreGithubWorkflowRepository):
+				printExtensionHeader("Fulcio GitHub Workflow Repository", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
+			case ext.Id.Equal(oidSigstoreGithubWorkflowRef):
+				printExtensionHeader("Fulcio GitHub Workflow Ref", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
+			case ext.Id.Equal(oidSigstoreOtherName):
+				// TODO(hs): get example cert with Sigstore OtherName; test it. Might work with
+				// the existing OtherName type too.
 				var otherName sigstoreOtherName
 				rest, err := asn1.UnmarshalWithParams(ext.Value, &otherName, "tag:0")
 				if err != nil || len(rest) > 0 {
@@ -845,7 +1016,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				} else {
 					buf.WriteString(fmt.Sprintf("%12sFulcio OtherName:\n%16s%s\n", "", "", otherName))
 				}
-			} else {
+			default:
 				buf.WriteString(fmt.Sprintf("%12s%s:", "", ext.Id.String()))
 				if ext.Critical {
 					buf.WriteString(" critical\n")
