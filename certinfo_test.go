@@ -160,3 +160,7 @@ func TestNoCN(t *testing.T) {
 	testPair(t, "test_certs/noCN.csr", "test_certs/noCN.csr.text", tCertificateRequest)
 	testPairShort(t, "test_certs/noCN.csr", "test_certs/noCN.csr.text.short", tCertificateRequest)
 }
+
+func TestSigstoreCertInfo(t *testing.T) {
+	testPair(t, "test_certs/sigstore1.cert.pem", "test_certs/sigstore1.cert.text", tCertificate)
+}
