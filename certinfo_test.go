@@ -163,4 +163,5 @@ func TestNoCN(t *testing.T) {
 
 func TestSigstoreCertInfo(t *testing.T) {
 	testPair(t, "test_certs/sigstore1.cert.pem", "test_certs/sigstore1.cert.text", tCertificate)
+	testPair(t, "test_certs/sigstore2.cert.pem", "test_certs/sigstore2.cert.text", tCertificate)
 }

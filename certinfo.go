@@ -168,19 +168,6 @@ type tbsCertificate struct {
 	Extensions         []pkix.Extension `asn1:"optional,explicit,tag:3"`
 }
 
-// sigstoreOtherName describes a name related to a certificate which is not in one
-// of the standard name formats. RFC 5280, 4.2.1.6:
-//
-//	OtherName ::= SEQUENCE {
-//	     type-id    OBJECT IDENTIFIER,
-//	     value      [0] EXPLICIT ANY DEFINED BY type-id }
-//
-// sigstoreOtherName for Fulcio-issued certificates only supports UTF-8 strings as values.
-type sigstoreOtherName struct {
-	ID    asn1.ObjectIdentifier
-	Value string `asn1:"utf8,explicit,tag:0"`
-}
-
 // certUniqueIDs extracts the subject and issuer unique IDs which are
 // byte strings. These are not common but may be present in x509v2 certificates
 // or later under tags 1 and 2 (before x509v3 extensions).
@@ -470,6 +457,14 @@ func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ip
 					return nil //nolint:nilerr // ignore errors as instructed above
 				}
 				buf.WriteString(fmt.Sprintf("%16sUPN:%s", "", upn.UPN))
+				buf.WriteString("\n")
+			case on.TypeID.Equal(oidSigstoreOtherName):
+				var son string
+				if _, err := asn1.Unmarshal(on.Value.Bytes, &son); err != nil {
+					printOtherName(on, buf)
+					return nil //nolint:nilerr // ignore errors as instructed above
+				}
+				buf.WriteString(fmt.Sprintf("%16sFulcio Identity: %s", "", son))
 				buf.WriteString("\n")
 			default:
 				printOtherName(on, buf)
@@ -1003,19 +998,6 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 			case ext.Id.Equal(oidSigstoreGithubWorkflowRef):
 				printExtensionHeader("Fulcio GitHub Workflow Ref", ext, &buf)
 				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
-			case ext.Id.Equal(oidSigstoreOtherName):
-				// TODO(hs): get example cert with Sigstore OtherName; test it. Might work with
-				// the existing OtherName type too.
-				var otherName sigstoreOtherName
-				rest, err := asn1.UnmarshalWithParams(ext.Value, &otherName, "tag:0")
-				if err != nil || len(rest) > 0 {
-					return "", errors.New("certinfo: error parsing OID " + ext.Id.String())
-				}
-				if ext.Critical {
-					buf.WriteString(fmt.Sprintf("%12sFulcio OtherName: critical\n%16s%s\n", "", "", otherName))
-				} else {
-					buf.WriteString(fmt.Sprintf("%12sFulcio OtherName:\n%16s%s\n", "", "", otherName))
-				}
 			default:
 				buf.WriteString(fmt.Sprintf("%12s%s:", "", ext.Id.String()))
 				if ext.Critical {
