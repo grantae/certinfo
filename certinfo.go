@@ -42,14 +42,15 @@ var (
 	oidSignedCertificateTimestampList = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 11129, 2, 4, 2}
 )
 
-// Sigstore OIDs
+// Sigstore (Fulcio) OIDs as documented here: https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md
 var (
-	certExtensionOIDCIssuer               = []int{1, 3, 6, 1, 4, 1, 57264, 1, 1}
-	certExtensionGithubWorkflowTrigger    = []int{1, 3, 6, 1, 4, 1, 57264, 1, 2}
-	certExtensionGithubWorkflowSha        = []int{1, 3, 6, 1, 4, 1, 57264, 1, 3}
-	certExtensionGithubWorkflowName       = []int{1, 3, 6, 1, 4, 1, 57264, 1, 4}
-	certExtensionGithubWorkflowRepository = []int{1, 3, 6, 1, 4, 1, 57264, 1, 5}
-	certExtensionGithubWorkflowRef        = []int{1, 3, 6, 1, 4, 1, 57264, 1, 6}
+	oidSigstoreOIDCIssuer               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 57264, 1, 1}
+	oidSigstoreGithubWorkflowTrigger    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 57264, 1, 2}
+	oidSigstoreGithubWorkflowSha        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 57264, 1, 3}
+	oidSigstoreGithubWorkflowName       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 57264, 1, 4}
+	oidSigstoreGithubWorkflowRepository = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 57264, 1, 5}
+	oidSigstoreGithubWorkflowRef        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 57264, 1, 6}
+	oidSigstoreOtherName                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 57264, 1, 7}
 )
 
 // stepProvisionerType are string representation of the provisioner type (int)
@@ -106,6 +107,19 @@ type tbsCertificate struct {
 	UniqueID           asn1.BitString   `asn1:"optional,tag:1"`
 	SubjectUniqueID    asn1.BitString   `asn1:"optional,tag:2"`
 	Extensions         []pkix.Extension `asn1:"optional,explicit,tag:3"`
+}
+
+// sigstoreOtherName describes a name related to a certificate which is not in one
+// of the standard name formats. RFC 5280, 4.2.1.6:
+//
+//	OtherName ::= SEQUENCE {
+//	     type-id    OBJECT IDENTIFIER,
+//	     value      [0] EXPLICIT ANY DEFINED BY type-id }
+//
+// sigstoreOtherName for Fulcio-issued certificates only supports UTF-8 strings as values.
+type sigstoreOtherName struct {
+	ID    asn1.ObjectIdentifier
+	Value string `asn1:"utf8,explicit,tag:0"`
 }
 
 // certUniqueIDs extracts the subject and issuer unique IDs which are
@@ -802,24 +816,35 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					// buf.WriteString(fmt.Sprintf("%20sExtensions: %v\n", "", sct.Extensions))
 					printSCTSignature(sct.Signature, &buf)
 				}
-			} else if ext.Id.Equal(certExtensionOIDCIssuer) {
-				oidcIssuer := string(ext.Value) // TODO: do ASN1 decoding?
+			} else if ext.Id.Equal(oidSigstoreOIDCIssuer) {
+				oidcIssuer := string(ext.Value)
 				buf.WriteString(fmt.Sprintf("%12sFulcio OIDC Issuer:\n%16s%s\n", "", "", oidcIssuer))
-			} else if ext.Id.Equal(certExtensionGithubWorkflowTrigger) {
+			} else if ext.Id.Equal(oidSigstoreGithubWorkflowTrigger) {
 				githubWorkflowTrigger := string(ext.Value)
 				buf.WriteString(fmt.Sprintf("%12sFulcio GitHub Workflow Trigger:\n%16s%s\n", "", "", githubWorkflowTrigger))
-			} else if ext.Id.Equal(certExtensionGithubWorkflowSha) {
+			} else if ext.Id.Equal(oidSigstoreGithubWorkflowSha) {
 				githubWorkflowSha := string(ext.Value)
 				buf.WriteString(fmt.Sprintf("%12sFulcio GitHub Workflow SHA Hash:\n%16s%s\n", "", "", githubWorkflowSha))
-			} else if ext.Id.Equal(certExtensionGithubWorkflowName) {
+			} else if ext.Id.Equal(oidSigstoreGithubWorkflowName) {
 				githubWorkflowName := string(ext.Value)
 				buf.WriteString(fmt.Sprintf("%12sFulcio GitHub Workflow Name:\n%16s%s\n", "", "", githubWorkflowName))
-			} else if ext.Id.Equal(certExtensionGithubWorkflowRepository) {
+			} else if ext.Id.Equal(oidSigstoreGithubWorkflowRepository) {
 				githubWorkflowRepository := string(ext.Value)
 				buf.WriteString(fmt.Sprintf("%12sFulcio GitHub Workflow Repository:\n%16s%s\n", "", "", githubWorkflowRepository))
-			} else if ext.Id.Equal(certExtensionGithubWorkflowRef) {
+			} else if ext.Id.Equal(oidSigstoreGithubWorkflowRef) {
 				githubWorkflowRef := string(ext.Value)
 				buf.WriteString(fmt.Sprintf("%12sFulcio GitHub Workflow Ref:\n%16s%s\n", "", "", githubWorkflowRef))
+			} else if ext.Id.Equal(oidSigstoreOtherName) {
+				var otherName sigstoreOtherName
+				rest, err := asn1.UnmarshalWithParams(ext.Value, &otherName, "tag:0")
+				if err != nil || len(rest) > 0 {
+					return "", errors.New("certinfo: error parsing OID " + ext.Id.String())
+				}
+				if ext.Critical {
+					buf.WriteString(fmt.Sprintf("%12sFulcio OtherName: critical\n%16s%s\n", "", "", otherName))
+				} else {
+					buf.WriteString(fmt.Sprintf("%12sFulcio OtherName:\n%16s%s\n", "", "", otherName))
+				}
 			} else {
 				buf.WriteString(fmt.Sprintf("%12s%s:", "", ext.Id.String()))
 				if ext.Critical {
