@@ -1,25 +1,30 @@
 # Certificate Information for Go
 
-A golang tool for printing x509 TLS certificates in a format similar to OpenSSL.
+A Golang tool for printing x509 TLS certificates in a format similar to OpenSSL.
+
+This is a (maintained) fork of [grantae/certinfo](https://github.com/grantae/certinfo).
+
+In addition to being able to extract and print standard information from any x509 certificate (request), it also includes capabilities to extract and print properties specific to the [Smallstep toolchain](https://github.com/smallstep) and other, selected OIDs.
 
 ## Installation
 
-``` bash
-go get github.com/grantae/certinfo
+```console
+go get github.com/smallstep/certinfo
 ```
 
 ## Usage
 
 ### Print a certificate from a website
 
-``` go
+```go
 package main
 
 import (
   "crypto/tls"
   "fmt"
-  "github.com/grantae/certinfo"
   "log"
+
+  "github.com/smallstep/certinfo"
 )
 
 func main() {
@@ -44,16 +49,17 @@ func main() {
 
 ### Print a PEM-encoded certificate from a file
 
-``` go
+```go
 package main
 
 import (
   "crypto/x509"
   "encoding/pem"
   "fmt"
-  "github.com/grantae/certinfo"
   "io/ioutil"
   "log"
+
+  "github.com/smallstep/certinfo"
 )
 
 func main() {
@@ -82,8 +88,8 @@ func main() {
 
 ## Testing
 
-``` bash
-go test github.com/grantae/certinfo
+```console
+go test github.com/smallstep/certinfo
 ```
 
 This compares several PEM-encoded certificates with their expected outputs.
@@ -91,4 +97,3 @@ This compares several PEM-encoded certificates with their expected outputs.
 ## License
 
 MIT -- see `LICENSE` for more information.
-
