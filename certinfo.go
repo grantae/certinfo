@@ -456,7 +456,7 @@ func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ip
 					printOtherName(on, buf)
 					return nil //nolint:nilerr // ignore errors as instructed above
 				}
-				buf.WriteString(fmt.Sprintf("%16sUPN:%s", "", upn.UPN))
+				buf.WriteString(fmt.Sprintf("%16sUPN: %s", "", upn.UPN))
 				buf.WriteString("\n")
 			case on.TypeID.Equal(oidSigstoreOtherName):
 				var son string
