@@ -464,7 +464,7 @@ func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ip
 					printOtherName(on, buf)
 					return nil //nolint:nilerr // ignore errors as instructed above
 				}
-				buf.WriteString(fmt.Sprintf("%16sFulcio Identity: %s", "", son))
+				buf.WriteString(fmt.Sprintf("%16sSigstore Identity: %s", "", son))
 				buf.WriteString("\n")
 			default:
 				printOtherName(on, buf)
@@ -981,22 +981,22 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				printExtensionHeader("X509v3 YubiKey Certification", ext, &buf)
 				buf.WriteString(fmt.Sprintf("%16sCSPN Certified\n", ""))
 			case ext.Id.Equal(oidSigstoreOIDCIssuer):
-				printExtensionHeader("Fulcio OIDC Issuer", ext, &buf)
+				printExtensionHeader("Sigstore OIDC Issuer", ext, &buf)
 				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
 			case ext.Id.Equal(oidSigstoreGithubWorkflowTrigger):
-				printExtensionHeader("Fulcio GitHub Workflow Trigger", ext, &buf)
+				printExtensionHeader("Sigstore GitHub Workflow Trigger", ext, &buf)
 				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
 			case ext.Id.Equal(oidSigstoreGithubWorkflowSha):
-				printExtensionHeader("Fulcio GitHub Workflow SHA Hash", ext, &buf)
+				printExtensionHeader("Sigstore GitHub Workflow SHA Hash", ext, &buf)
 				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
 			case ext.Id.Equal(oidSigstoreGithubWorkflowName):
-				printExtensionHeader("Fulcio GitHub Workflow Name", ext, &buf)
+				printExtensionHeader("Sigstore GitHub Workflow Name", ext, &buf)
 				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
 			case ext.Id.Equal(oidSigstoreGithubWorkflowRepository):
-				printExtensionHeader("Fulcio GitHub Workflow Repository", ext, &buf)
+				printExtensionHeader("Sigstore GitHub Workflow Repository", ext, &buf)
 				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
 			case ext.Id.Equal(oidSigstoreGithubWorkflowRef):
-				printExtensionHeader("Fulcio GitHub Workflow Ref", ext, &buf)
+				printExtensionHeader("Sigstore GitHub Workflow Ref", ext, &buf)
 				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
 			default:
 				buf.WriteString(fmt.Sprintf("%12s%s:", "", ext.Id.String()))

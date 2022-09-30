@@ -30,8 +30,8 @@ Certificate:
             X509v3 Authority Key Identifier:
                 keyid:DF:33:25:1A:5F:FE:27:51:DE:8A:17:F3:6A:32:27:90:42:50:51:A3
             X509v3 Subject Alternative Name: critical
-                Fulcio Identity: foo!127.0.0.1
-            Fulcio OIDC Issuer:
+                Sigstore Identity: foo!127.0.0.1
+            Sigstore OIDC Issuer:
                 http://127.0.0.1:45661
             RFC6962 Certificate Transparency SCT:
                 SCT [0]:

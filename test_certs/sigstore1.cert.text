@@ -33,17 +33,17 @@ Certificate:
                 keyid:58:C0:1E:5F:91:45:A5:66:A9:7A:CC:90:A1:93:22:D0:2A:C5:C5:FA
             X509v3 Subject Alternative Name:
                 URI:https://github.com/hslatman/symfony-cli/.github/workflows/releaser.yml@refs/tags/v5.3.0-exp-sign-4
-            Fulcio GitHub Workflow Repository:
+            Sigstore GitHub Workflow Repository:
                 hslatman/symfony-cli
-            Fulcio GitHub Workflow Ref:
+            Sigstore GitHub Workflow Ref:
                 refs/tags/v5.3.0-exp-sign-4
-            Fulcio GitHub Workflow Trigger:
+            Sigstore GitHub Workflow Trigger:
                 push
-            Fulcio OIDC Issuer:
+            Sigstore OIDC Issuer:
                 https://token.actions.githubusercontent.com
-            Fulcio GitHub Workflow Name:
+            Sigstore GitHub Workflow Name:
                 Release
-            Fulcio GitHub Workflow SHA Hash:
+            Sigstore GitHub Workflow SHA Hash:
                 7916f7a5efe4d495d70a94e4e4476eaca120a31f
     Signature Algorithm: ECDSA-SHA384
          30:66:02:31:00:be:37:b6:c6:74:f1:5a:c7:53:34:69:78:79:
