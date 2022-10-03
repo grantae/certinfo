@@ -6,6 +6,8 @@ import (
 	"encoding/pem"
 	"os"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 type InputType int
@@ -54,9 +56,11 @@ func testPair(t *testing.T, certFile, refFile string, inputType InputType) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(resultData, refData) {
+
+	// Generate a diff and check if it's empty; if not, report error
+	if diff := cmp.Diff(refData, resultData); diff != "" {
 		t.Logf("'%s' did not match reference '%s'\n", certFile, refFile)
-		t.Errorf("Dump follows:\n%s\n", result)
+		t.Errorf("Diff follows:\n%s\n", diff)
 	}
 }
 
@@ -159,4 +163,9 @@ func TestCsrInfoWackyExtensions(t *testing.T) {
 func TestNoCN(t *testing.T) {
 	testPair(t, "test_certs/noCN.csr", "test_certs/noCN.csr.text", tCertificateRequest)
 	testPairShort(t, "test_certs/noCN.csr", "test_certs/noCN.csr.text.short", tCertificateRequest)
+}
+
+func TestSigstoreCertInfo(t *testing.T) {
+	testPair(t, "test_certs/sigstore1.cert.pem", "test_certs/sigstore1.cert.text", tCertificate)
+	testPair(t, "test_certs/sigstore2.cert.pem", "test_certs/sigstore2.cert.text", tCertificate)
 }

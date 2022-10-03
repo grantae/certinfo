@@ -1,0 +1,54 @@
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number: 2320580145869058136443151369323359520969369274 (0x680ef42157f8cd21655857f9e1a81558a2a6ba)
+    Signature Algorithm: ECDSA-SHA384
+        Issuer: O=sigstore.dev,CN=sigstore
+        Validity
+            Not Before: Feb 1 23:07:29 2022 UTC
+            Not After : Feb 1 23:17:28 2022 UTC
+        Subject: O=sigstore
+        Subject Public Key Info:
+            Public Key Algorithm: ECDSA
+                Public-Key: (256 bit)
+                X:
+                    08:e4:82:81:3e:9f:f5:f6:e9:7a:6d:c3:fd:50:cc:
+                    b6:58:d1:0b:56:1d:a7:20:97:da:b0:2a:5b:ed:a0:
+                    ed:ac
+                Y:
+                    33:e0:bf:af:d5:a5:4f:a5:6d:c8:13:a9:ec:53:ff:
+                    7d:41:db:db:82:3b:9f:a5:83:19:ea:31:be:1d:31:
+                    bc:e7
+                Curve: P-256
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Digital Signature
+            X509v3 Extended Key Usage:
+                Code Signing
+            X509v3 Basic Constraints: critical
+                CA:FALSE
+            X509v3 Subject Key Identifier:
+                5D:11:E8:9B:0C:80:A2:77:F5:F3:97:18:27:CC:29:17:D2:63:57:2E
+            X509v3 Authority Key Identifier:
+                keyid:58:C0:1E:5F:91:45:A5:66:A9:7A:CC:90:A1:93:22:D0:2A:C5:C5:FA
+            X509v3 Subject Alternative Name:
+                URI:https://github.com/hslatman/symfony-cli/.github/workflows/releaser.yml@refs/tags/v5.3.0-exp-sign-4
+            Sigstore GitHub Workflow Repository:
+                hslatman/symfony-cli
+            Sigstore GitHub Workflow Ref:
+                refs/tags/v5.3.0-exp-sign-4
+            Sigstore GitHub Workflow Trigger:
+                push
+            Sigstore OIDC Issuer:
+                https://token.actions.githubusercontent.com
+            Sigstore GitHub Workflow Name:
+                Release
+            Sigstore GitHub Workflow SHA Hash:
+                7916f7a5efe4d495d70a94e4e4476eaca120a31f
+    Signature Algorithm: ECDSA-SHA384
+         30:66:02:31:00:be:37:b6:c6:74:f1:5a:c7:53:34:69:78:79:
+         88:ba:d1:62:ca:d0:27:a2:d2:e7:21:17:ef:fd:3f:42:bb:a0:
+         17:93:db:fb:39:48:85:62:5a:bc:79:c4:1f:d0:0e:9d:fb:02:
+         31:00:fa:7e:04:94:6f:06:60:a2:8f:fc:bc:bd:89:d7:d1:6f:
+         c1:64:f3:e2:4f:a9:ac:f6:18:d2:a6:9c:90:ec:e9:53:2b:7f:
+         3f:4b:e0:d8:23:bd:52:bc:4f:08:dc:7e:71:4c

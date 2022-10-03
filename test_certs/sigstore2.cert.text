@@ -1,0 +1,50 @@
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number: 453516479926854321636729881678065165927286592679 (0x4f7061de65a6269fb6c13414c63d7d475bd854a7)
+    Signature Algorithm: ECDSA-SHA256
+        Issuer: C=USA,ST=WA,L=Kirkland,STREET=767 6th St S,POSTALCODE=98033,O=sigstore
+        Validity
+            Not Before: Sep 29 18:37:21 2022 UTC
+            Not After : Sep 29 18:47:21 2022 UTC
+        Subject:
+        Subject Public Key Info:
+            Public Key Algorithm: ECDSA
+                Public-Key: (256 bit)
+                X:
+                    95:25:ac:a8:26:6b:cb:ef:1c:6b:22:9f:42:e7:b3:
+                    c8:a5:91:92:06:7d:b1:68:36:1a:7f:7b:61:cf:74:
+                    b3:f0
+                Y:
+                    9b:2d:48:7e:28:06:d8:54:66:32:3c:3b:0f:29:a7:
+                    0b:77:1e:f6:8d:64:d3:39:1c:0a:e8:5c:d0:f9:fa:
+                    3e:73
+                Curve: P-256
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Digital Signature
+            X509v3 Extended Key Usage:
+                Code Signing
+            X509v3 Subject Key Identifier:
+                3B:2D:8C:D6:F0:71:10:EB:DF:7A:B9:4E:DD:24:52:33:CB:AC:6D:2C
+            X509v3 Authority Key Identifier:
+                keyid:DF:33:25:1A:5F:FE:27:51:DE:8A:17:F3:6A:32:27:90:42:50:51:A3
+            X509v3 Subject Alternative Name: critical
+                Sigstore Identity: foo!127.0.0.1
+            Sigstore OIDC Issuer:
+                http://127.0.0.1:45661
+            RFC6962 Certificate Transparency SCT:
+                SCT [0]:
+                    Version: V1 (0x0)
+                    LogID: KHYaGJAn++880NYaAY12sFBXKcenQRvMvfYE9F1CYVM=
+                    Timestamp: Jan 1 00:00:01.337 1970 UTC
+                    Signature Algorithm: SHA256-ECDSA
+                      30:44:02:20:08:73:6d:49:e5:96:dd:29:91:f0:e7:02:f1:08:
+                      ff:8c:84:11:2c:57:9f:a7:7e:f1:b2:6a:43:88:bf:a1:4e:bc:
+                      02:20:59:83:19:6f:a3:f0:ff:ff:ee:88:d3:3b:41:38:36:39:
+                      fd:4e:aa:62:b5:19:b7:86:b8:49:7d:54:93:7c:bf:c7
+    Signature Algorithm: ECDSA-SHA256
+         30:45:02:21:00:a2:0a:3f:ba:98:2f:7e:b8:eb:a1:2e:f6:05:
+         c2:2b:3f:39:e7:7b:b3:42:ea:63:ad:d2:30:d5:14:37:c5:82:
+         cc:02:20:0a:d4:96:1a:f4:ed:fb:46:28:29:77:c9:56:b0:f1:
+         ce:42:93:9a:79:79:14:8d:63:f4:6a:67:46:11:0b:b2:2b

@@ -47,6 +47,17 @@ var (
 	oidUserPrincipalName              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 20, 2, 3}
 )
 
+// Sigstore (Fulcio) OIDs as documented here: https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md
+var (
+	oidSigstoreOIDCIssuer               = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 57264, 1, 1}
+	oidSigstoreGithubWorkflowTrigger    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 57264, 1, 2}
+	oidSigstoreGithubWorkflowSha        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 57264, 1, 3}
+	oidSigstoreGithubWorkflowName       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 57264, 1, 4}
+	oidSigstoreGithubWorkflowRepository = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 57264, 1, 5}
+	oidSigstoreGithubWorkflowRef        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 57264, 1, 6}
+	oidSigstoreOtherName                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 57264, 1, 7}
+)
+
 // stepProvisionerType are string representation of the provisioner type (int)
 // in the step provisioner extension.
 var stepProvisionerType = [...]string{
@@ -445,7 +456,15 @@ func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ip
 					printOtherName(on, buf)
 					return nil //nolint:nilerr // ignore errors as instructed above
 				}
-				buf.WriteString(fmt.Sprintf("%16sUPN:%s", "", upn.UPN))
+				buf.WriteString(fmt.Sprintf("%16sUPN: %s", "", upn.UPN))
+				buf.WriteString("\n")
+			case on.TypeID.Equal(oidSigstoreOtherName):
+				var son string
+				if _, err := asn1.Unmarshal(on.Value.Bytes, &son); err != nil {
+					printOtherName(on, buf)
+					return nil //nolint:nilerr // ignore errors as instructed above
+				}
+				buf.WriteString(fmt.Sprintf("%16sSigstore Identity: %s", "", son))
 				buf.WriteString("\n")
 			default:
 				printOtherName(on, buf)
@@ -961,6 +980,24 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 			case ext.Id.Equal(oidYubicoCspnCertified):
 				printExtensionHeader("X509v3 YubiKey Certification", ext, &buf)
 				buf.WriteString(fmt.Sprintf("%16sCSPN Certified\n", ""))
+			case ext.Id.Equal(oidSigstoreOIDCIssuer):
+				printExtensionHeader("Sigstore OIDC Issuer", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
+			case ext.Id.Equal(oidSigstoreGithubWorkflowTrigger):
+				printExtensionHeader("Sigstore GitHub Workflow Trigger", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
+			case ext.Id.Equal(oidSigstoreGithubWorkflowSha):
+				printExtensionHeader("Sigstore GitHub Workflow SHA Hash", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
+			case ext.Id.Equal(oidSigstoreGithubWorkflowName):
+				printExtensionHeader("Sigstore GitHub Workflow Name", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
+			case ext.Id.Equal(oidSigstoreGithubWorkflowRepository):
+				printExtensionHeader("Sigstore GitHub Workflow Repository", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
+			case ext.Id.Equal(oidSigstoreGithubWorkflowRef):
+				printExtensionHeader("Sigstore GitHub Workflow Ref", ext, &buf)
+				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
 			default:
 				buf.WriteString(fmt.Sprintf("%12s%s:", "", ext.Id.String()))
 				if ext.Critical {
