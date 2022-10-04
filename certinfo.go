@@ -10,6 +10,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
@@ -21,7 +22,6 @@ import (
 	cttls "github.com/google/certificate-transparency-go/tls"
 	ctx509 "github.com/google/certificate-transparency-go/x509"
 	ctutil "github.com/google/certificate-transparency-go/x509util"
-	"github.com/pkg/errors"
 	"golang.org/x/crypto/cryptobyte"
 	cryptobyte_asn1 "golang.org/x/crypto/cryptobyte/asn1"
 )
@@ -558,7 +558,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 	// Issuer/Subject Unique ID, typically used in old v2 certificates
 	issuerUID, subjectUID, err := certUniqueIDs(cert.RawTBSCertificate)
 	if err != nil {
-		return "", errors.Errorf("certinfo: Error parsing TBS unique attributes: %v\n", err)
+		return "", fmt.Errorf("certinfo: Error parsing TBS unique attributes: %w", err)
 	}
 	if len(issuerUID) > 0 {
 		buf.WriteString(fmt.Sprintf("%8sIssuer Unique ID: %02x", "", issuerUID[0]))
@@ -857,7 +857,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				var comment string
 				rest, err := asn1.Unmarshal(ext.Value, &comment)
 				if err != nil || len(rest) > 0 {
-					return "", errors.New("certinfo: Error parsing OID " + ext.Id.String())
+					return "", fmt.Errorf("certinfo: Error parsing OID %q", ext.Id.String())
 				}
 				if ext.Critical {
 					buf.WriteString(fmt.Sprintf("%12sNetscape Comment: critical\n%16s%s\n", "", "", comment))
@@ -874,7 +874,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				val := &stepProvisioner{}
 				rest, err := asn1.Unmarshal(ext.Value, val)
 				if err != nil || len(rest) > 0 {
-					return "", errors.New("certinfo: Error parsing OID " + ext.Id.String())
+					return "", fmt.Errorf("certinfo: Error parsing OID %q", ext.Id.String())
 				}
 
 				// Get type name
@@ -908,7 +908,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				val := &stepCertificateAuthority{}
 				rest, err := asn1.Unmarshal(ext.Value, val)
 				if err != nil || len(rest) > 0 {
-					return "", errors.New("certinfo: Error parsing OID " + ext.Id.String())
+					return "", fmt.Errorf("certinfo: Error parsing OID %q", ext.Id.String())
 				}
 				buf.WriteString(fmt.Sprintf("%16sType: %s\n", "", val.Type))
 				if val.CertificateID != "" {
@@ -932,15 +932,15 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				var raw []byte
 				rest, err := asn1.Unmarshal(ext.Value, &raw)
 				if err != nil || len(rest) > 0 {
-					return "", errors.New("certinfo: Error parsing OID " + ext.Id.String())
+					return "", fmt.Errorf("certinfo: Error parsing OID %q", ext.Id.String())
 				}
 				var sctList ctx509.SignedCertificateTimestampList
 				if rest, err := cttls.Unmarshal(raw, &sctList); err != nil || len(rest) > 0 {
-					return "", errors.New("certinfo: Error parsing OID " + ext.Id.String())
+					return "", fmt.Errorf("certinfo: Error parsing OID %q", ext.Id.String())
 				}
 				scts, err := ctutil.ParseSCTsFromSCTList(&sctList)
 				if err != nil {
-					return "", errors.New("certinfo: Error parsing OID " + ext.Id.String())
+					return "", fmt.Errorf("certinfo: Error parsing OID %q", ext.Id.String())
 				}
 
 				for i, sct := range scts {
@@ -961,7 +961,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				var serialNumber int
 				rest, err := asn1.Unmarshal(ext.Value, &serialNumber)
 				if err != nil || len(rest) > 0 {
-					return "", errors.New("certinfo: Error parsing OID " + ext.Id.String())
+					return "", fmt.Errorf("certinfo: Error parsing OID %q", ext.Id.String())
 				}
 				printExtensionHeader("X509v3 YubiKey Serial Number", ext, &buf)
 				buf.WriteString(fmt.Sprintf("%16s%d\n", "", serialNumber))

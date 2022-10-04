@@ -5,7 +5,6 @@ go 1.18
 require (
 	github.com/google/certificate-transparency-go v1.1.3
 	github.com/google/go-cmp v0.5.9
-	github.com/pkg/errors v0.9.1
 	golang.org/x/crypto v0.0.0-20220826181053-bd7e27e6170d
 )
 
