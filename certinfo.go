@@ -58,6 +58,15 @@ var (
 	oidSigstoreOtherName                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 57264, 1, 7}
 )
 
+// TCG EK Credential Profile For TPM Family 2.0; Level 0
+// https://trustedcomputinggroup.org/wp-content/uploads/TCG_IWG_EKCredentialProfile_v2p4_r3.pdf
+var (
+	oidTPMManufacturer  = asn1.ObjectIdentifier{2, 23, 133, 2, 1}
+	oidTPMModel         = asn1.ObjectIdentifier{2, 23, 133, 2, 2}
+	oidTPMVersion       = asn1.ObjectIdentifier{2, 23, 133, 2, 3}
+	oidTPMSpecification = asn1.ObjectIdentifier{2, 23, 133, 2, 16}
+)
+
 // stepProvisionerType are string representation of the provisioner type (int)
 // in the step provisioner extension.
 var stepProvisionerType = [...]string{
@@ -145,6 +154,55 @@ type hardwareModuleName struct {
 // The OID defined for this SAN is "1.3.6.1.4.1.311.20.2.3".
 type userPrincipalName struct {
 	UPN string `asn1:"utf8"`
+}
+
+type tpmDeviceAttributes struct {
+	Attributes []asn1.RawValue
+}
+
+// tpmDeviceAttribute defines the tpm attributes TPMManufacturer, TPMModel and
+// TPMVersion.
+//
+// These attributes are defined in the section 3.1.2 of
+// https://trustedcomputinggroup.org/wp-content/uploads/TCG_IWG_EKCredentialProfile_v2p4_r3.pdf
+//
+//	TPMManufacturer ATTRIBUTE ::= {
+//	    WITH SYNTAX UTF8String
+//	    ID tcg-at-tpmManufacturer }
+//	TPMModel ATTRIBUTE ::= {
+//	    WITH SYNTAX UTF8String
+//	    ID tcg-at-tpmModel }
+//	TPMVersion ATTRIBUTE ::= {
+//	    WITH SYNTAX UTF8String
+//	    ID tcg-at-tpmVersion }
+type tpmDeviceAttribute struct {
+	ID    asn1.ObjectIdentifier
+	Value string `asn1:"utf8"`
+}
+
+type subjectDirectoryAttributes struct {
+	Attribute attribute
+}
+
+type attribute struct {
+	Type  asn1.ObjectIdentifier
+	Value asn1.RawValue
+}
+
+// tpmSpecfication identifies the TPM family, level and revision of the TPM
+// specification with which a TPM implementation is compliant.
+//
+// It is defined in the section 3.1.3 of
+// https://trustedcomputinggroup.org/wp-content/uploads/TCG_IWG_EKCredentialProfile_v2p4_r3.pdf
+//
+//	TPMSpecification ::= SEQUENCE {
+//		family UTF8String (SIZE (1..STRMAX)),
+//		level INTEGER,
+//		revision INTEGER }
+type tpmSpecification struct {
+	Family   string `asn1:"utf8"`
+	Level    int
+	Revision int
 }
 
 // publicKeyInfo allows unmarshaling the public key
@@ -421,7 +479,8 @@ func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ip
 
 	// Parse other names ignoring errors
 	return forEachSAN(ext.Value, func(tag int, data []byte) error {
-		if tag == 0 || tag == 0x20 {
+		switch tag {
+		case 0, 0x20:
 			var on otherName
 			if rest, err := asn1.UnmarshalWithParams(data, &on, "tag:0"); err != nil || len(rest) > 0 {
 				return nil //nolint:nilerr // ignore errors as instructed above
@@ -469,6 +528,28 @@ func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ip
 			default:
 				printOtherName(on, buf)
 			}
+		case 0x24:
+			var tpm tpmDeviceAttributes
+			if rest, err := asn1.UnmarshalWithParams(data, &tpm, "tag:4"); err != nil || len(rest) > 0 {
+				return nil //nolint:nilerr // ignore errors as instructed above
+			}
+			for _, r := range tpm.Attributes {
+				var attr tpmDeviceAttribute
+				if _, err := asn1.Unmarshal(r.Bytes, &attr); err != nil {
+					continue
+				}
+				switch {
+				case attr.ID.Equal(oidTPMManufacturer):
+					buf.WriteString(fmt.Sprintf("%16sTPM Manufacturer: %s", "", attr.Value))
+					buf.WriteString("\n")
+				case attr.ID.Equal(oidTPMModel):
+					buf.WriteString(fmt.Sprintf("%16sTPM Model: %s", "", attr.Value))
+					buf.WriteString("\n")
+				case attr.ID.Equal(oidTPMVersion):
+					buf.WriteString(fmt.Sprintf("%16sTPM Version: %s", "", attr.Value))
+					buf.WriteString("\n")
+				}
+			}
 		}
 		return nil
 	})
@@ -513,6 +594,19 @@ func printExtensionHeader(name string, ext pkix.Extension, buf *bytes.Buffer) {
 	} else {
 		buf.WriteString("\n")
 	}
+}
+
+func printRunes(ext pkix.Extension, buf *bytes.Buffer) {
+	value := bytes.Runes(ext.Value)
+	sanitized := make([]rune, len(value))
+	for i, r := range value {
+		if strconv.IsPrint(r) && r != '�' {
+			sanitized[i] = r
+		} else {
+			sanitized[i] = '.'
+		}
+	}
+	buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(sanitized)))
 }
 
 // CertificateShortText returns the human-readable string representation of the
@@ -582,6 +676,27 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 			//nolint:gocritic // avoid nested switch statements
 			if len(ext.Id) == 4 && ext.Id[0] == 2 && ext.Id[1] == 5 && ext.Id[2] == 29 {
 				switch ext.Id[3] {
+				case 9:
+					buf.WriteString(fmt.Sprintf("%12sX509v3 Subject Directory Attributes:", ""))
+					if ext.Critical {
+						buf.WriteString(" critical\n")
+					} else {
+						buf.WriteString("\n")
+					}
+					var sda subjectDirectoryAttributes
+					if rest, err := asn1.Unmarshal(ext.Value, &sda); err != nil || len(rest) > 0 {
+						printRunes(ext, &buf)
+						continue
+					}
+
+					if sda.Attribute.Type.Equal(oidTPMSpecification) {
+						var spec tpmSpecification
+						if _, err := asn1.Unmarshal(sda.Attribute.Value.Bytes, &spec); err == nil {
+							buf.WriteString(fmt.Sprintf("%16sTPM Specification: Family: %s, Level: %d, Revision: %d\n", "", spec.Family, spec.Level, spec.Revision))
+							continue
+						}
+					}
+					buf.WriteString(fmt.Sprintf("%16s%s: 0x%x\n", "", sda.Attribute.Type, sda.Attribute.Value.Bytes))
 				case 14:
 					err = printSubjKeyID(ext, &buf)
 				case 15:
@@ -809,7 +924,11 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 						}
 					}
 					for _, oid := range cert.UnknownExtKeyUsage {
-						list = append(list, oid.String())
+						if oid.Equal(oidExtKeyUsageEKCertificate) {
+							list = append(list, "EK Certificate")
+						} else {
+							list = append(list, oid.String())
+						}
 					}
 					if len(list) > 0 {
 						buf.WriteString(fmt.Sprintf("%16s%s", "", list[0]))
@@ -1035,8 +1154,8 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 }
 
 var (
-	oidExtSubjectKeyID     = []int{2, 5, 29, 14}
-	oidExtSubjectAltName   = []int{2, 5, 29, 17}
+	oidExtSubjectKeyID     = asn1.ObjectIdentifier{2, 5, 29, 14}
+	oidExtSubjectAltName   = asn1.ObjectIdentifier{2, 5, 29, 17}
 	oidExtKeyUsage         = asn1.ObjectIdentifier{2, 5, 29, 15}
 	oidExtExtendedKeyUsage = asn1.ObjectIdentifier{2, 5, 29, 37}
 	oidExtBasicConstraints = asn1.ObjectIdentifier{2, 5, 29, 19}
@@ -1101,6 +1220,7 @@ var (
 	oidExtKeyUsageNetscapeServerGatedCrypto      = asn1.ObjectIdentifier{2, 16, 840, 1, 113730, 4, 1}
 	oidExtKeyUsageMicrosoftCommercialCodeSigning = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 22}
 	oidExtKeyUsageMicrosoftKernelCodeSigning     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 61, 1, 1}
+	oidExtKeyUsageEKCertificate                  = asn1.ObjectIdentifier{2, 23, 133, 8, 1}
 )
 
 // CertificateRequestText returns a human-readable string representation
@@ -1273,6 +1393,7 @@ func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
 					{oidExtKeyUsageNetscapeServerGatedCrypto, "Netscape Server Gated Crypto"},
 					{oidExtKeyUsageMicrosoftCommercialCodeSigning, "Microsoft Commercial Code Signing"},
 					{oidExtKeyUsageMicrosoftKernelCodeSigning, "Microsoft Kernel Code Signing"},
+					{oidExtKeyUsageEKCertificate, "EK Certificate"},
 				}
 				var list []string
 				for _, u := range keyUsage {
