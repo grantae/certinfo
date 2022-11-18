@@ -163,7 +163,7 @@ type tpmDeviceAttributes struct {
 // tpmDeviceAttribute defines the tpm attributes TPMManufacturer, TPMModel and
 // TPMVersion.
 //
-// These attributes are defined in the section 3.1.2 of
+// These attributes are defined in section 3.1.2 of
 // https://trustedcomputinggroup.org/wp-content/uploads/TCG_IWG_EKCredentialProfile_v2p4_r3.pdf
 //
 //	TPMManufacturer ATTRIBUTE ::= {
@@ -189,10 +189,10 @@ type attribute struct {
 	Value asn1.RawValue
 }
 
-// tpmSpecfication identifies the TPM family, level and revision of the TPM
+// tpmSpecification identifies the TPM family, level and revision of the TPM
 // specification with which a TPM implementation is compliant.
 //
-// It is defined in the section 3.1.3 of
+// It is defined in section 3.1.3 of
 // https://trustedcomputinggroup.org/wp-content/uploads/TCG_IWG_EKCredentialProfile_v2p4_r3.pdf
 //
 //	TPMSpecification ::= SEQUENCE {
