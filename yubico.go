@@ -71,9 +71,9 @@ func yubicoPolicies(v []byte) []string {
 			case 1:
 				policies = append(policies, "Touch policy: never")
 			case 2:
-				policies = append(policies, "Touch policy: once per session")
-			case 3:
 				policies = append(policies, "Touch policy: always")
+			case 3:
+				policies = append(policies, "Touch policy: once per session")
 			default:
 				policies = append(policies, fmt.Sprintf("Touch policy: unknown (0x%02x)", b))
 			}
