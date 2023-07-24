@@ -1078,9 +1078,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				}
 
 				buf.WriteString(fmt.Sprintf("%16sKind: %s\n", "", kind))
-				if len(val.EndpointID) != 0 {
-					buf.WriteString(fmt.Sprintf("%16sEndpointID: %s\n", "", string(val.EndpointID)))
-				}
+				buf.WriteString(fmt.Sprintf("%16sEndpointID: %s\n", "", string(val.EndpointID)))
 			case ext.Id.Equal(oidSignedCertificateTimestampList):
 				buf.WriteString(fmt.Sprintf("%12sRFC6962 Certificate Transparency SCT:", ""))
 				if ext.Critical {
