@@ -41,6 +41,7 @@ var (
 	oidNSComment                      = asn1.ObjectIdentifier{2, 16, 840, 1, 113730, 1, 13}
 	oidStepProvisioner                = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64, 1}
 	oidStepCertificateAuthority       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64, 2}
+	oidStepManagedEndpoint            = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64, 3}
 	oidSignedCertificateTimestampList = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 11129, 2, 4, 2}
 	oidPermanentIdentifier            = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 8, 3}
 	oidHardwareModuleName             = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 8, 4}
@@ -84,6 +85,15 @@ var stepProvisionerType = [...]string{
 	"Nebula", // Type 11
 }
 
+// stepManagedEndpointKind are string representations of the managed endpoint kind (int)
+// in the step managed endpoint extension.
+var stepManagedEndpointKind = [...]string{
+	"NOOP",     // Type 0, is not supported
+	"Device",   // Type 1
+	"Workload", // Type 2
+	"People",   // Type 3
+}
+
 // validity allows unmarshaling the certificate validity date range
 type validity struct {
 	NotBefore, NotAfter time.Time
@@ -100,6 +110,11 @@ type stepCertificateAuthority struct {
 	Type          string
 	CertificateID string   `asn1:"optional,omitempty"`
 	KeyValuePairs []string `asn1:"optional,omitempty"`
+}
+
+type stepManagedEndpoint struct {
+	Kind       int
+	EndpointID string
 }
 
 // RFC 5280 - https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.6
@@ -1040,6 +1055,31 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 						value = val.KeyValuePairs[i+1]
 					}
 					buf.WriteString(fmt.Sprintf("%16s%s: %s\n", "", key, value))
+				}
+			case ext.Id.Equal(oidStepManagedEndpoint):
+				buf.WriteString(fmt.Sprintf("%12sX509v3 Step Managed Endpoint:", ""))
+				if ext.Critical {
+					buf.WriteString(" critical\n")
+				} else {
+					buf.WriteString("\n")
+				}
+				val := &stepManagedEndpoint{}
+				rest, err := asn1.Unmarshal(ext.Value, val)
+				if err != nil || len(rest) > 0 {
+					return "", fmt.Errorf("certinfo: Error parsing OID %q", ext.Id.String())
+				}
+
+				// Get kind name
+				var kind string
+				if len(stepManagedEndpointKind) > val.Kind {
+					kind = stepManagedEndpointKind[val.Kind]
+				} else {
+					kind = fmt.Sprintf("%d (unknown)", val.Kind)
+				}
+
+				buf.WriteString(fmt.Sprintf("%16sKind: %s\n", "", kind))
+				if len(val.EndpointID) != 0 {
+					buf.WriteString(fmt.Sprintf("%16sEndpointID: %s\n", "", string(val.EndpointID)))
 				}
 			case ext.Id.Equal(oidSignedCertificateTimestampList):
 				buf.WriteString(fmt.Sprintf("%12sRFC6962 Certificate Transparency SCT:", ""))
