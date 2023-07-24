@@ -88,7 +88,7 @@ var stepProvisionerType = [...]string{
 // stepManagedEndpointKind are string representations of the managed endpoint kind (int)
 // in the step managed endpoint extension.
 var stepManagedEndpointKind = [...]string{
-	"Unknown",     // Type 0, is not supported
+	"Unknown",  // Type 0, is not supported
 	"Device",   // Type 1
 	"Workload", // Type 2
 	"People",   // Type 3
