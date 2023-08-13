@@ -131,7 +131,7 @@ func printSubjectInformation(subj *pkix.Name, pkAlgo x509.PublicKeyAlgorithm, pk
 	buf.WriteString(fmt.Sprintf("%8sSubject Public Key Info:\n%12sPublic Key Algorithm: ", "", ""))
 	switch pkAlgo {
 	case x509.RSA:
-		buf.WriteString(fmt.Sprintf("RSA\n"))
+		buf.WriteString("RSA\n")
 		if rsaKey, ok := pk.(*rsa.PublicKey); ok {
 			buf.WriteString(fmt.Sprintf("%16sPublic-Key: (%d bit)\n", "", rsaKey.N.BitLen()))
 			// Some implementations (notably OpenSSL) prepend 0x00 to the modulus
@@ -153,7 +153,7 @@ func printSubjectInformation(subj *pkix.Name, pkAlgo x509.PublicKeyAlgorithm, pk
 			return errors.New("certinfo: Expected rsa.PublicKey for type x509.RSA")
 		}
 	case x509.DSA:
-		buf.WriteString(fmt.Sprintf("DSA\n"))
+		buf.WriteString("DSA\n")
 		if dsaKey, ok := pk.(*dsa.PublicKey); ok {
 			dsaKeyPrinter("pub", dsaKey.Y, buf)
 			dsaKeyPrinter("P", dsaKey.P, buf)
@@ -163,7 +163,7 @@ func printSubjectInformation(subj *pkix.Name, pkAlgo x509.PublicKeyAlgorithm, pk
 			return errors.New("certinfo: Expected dsa.PublicKey for type x509.DSA")
 		}
 	case x509.ECDSA:
-		buf.WriteString(fmt.Sprintf("ECDSA\n"))
+		buf.WriteString("ECDSA\n")
 		if ecdsaKey, ok := pk.(*ecdsa.PublicKey); ok {
 			buf.WriteString(fmt.Sprintf("%16sPublic-Key: (%d bit)\n", "", ecdsaKey.Params().BitSize))
 			dsaKeyPrinter("X", ecdsaKey.X, buf)
@@ -256,11 +256,11 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 	var buf bytes.Buffer
 	buf.Grow(4096) // 4KiB should be enough
 
-	buf.WriteString(fmt.Sprintf("Certificate:\n"))
+	buf.WriteString("Certificate:\n")
 	buf.WriteString(fmt.Sprintf("%4sData:\n", ""))
 	printVersion(cert.Version, &buf)
 	buf.WriteString(fmt.Sprintf("%8sSerial Number: %d (%#x)\n", "", cert.SerialNumber, cert.SerialNumber))
-	buf.WriteString(fmt.Sprintf("%4sSignature Algorithm: %s\n", "", cert.SignatureAlgorithm))
+	buf.WriteString(fmt.Sprintf("%8sSignature Algorithm: %s\n", "", cert.SignatureAlgorithm))
 
 	// Issuer information
 	buf.WriteString(fmt.Sprintf("%8sIssuer: ", ""))
@@ -280,7 +280,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 	// Issuer/Subject Unique ID, typically used in old v2 certificates
 	issuerUID, subjectUID, err := certUniqueIDs(cert.RawTBSCertificate)
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("certinfo: Error parsing TBS unique attributes: %s\n", err.Error()))
+		return "", fmt.Errorf("certinfo: Error parsing TBS unique attributes: %w", err)
 	}
 	if len(issuerUID) > 0 {
 		buf.WriteString(fmt.Sprintf("%8sIssuer Unique ID: %02x", "", issuerUID[0]))
@@ -369,7 +369,7 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 						buf.WriteString(fmt.Sprintf("%16sCA:FALSE", ""))
 					}
 					if cert.MaxPathLenZero {
-						buf.WriteString(fmt.Sprintf(", pathlen:0\n"))
+						buf.WriteString(", pathlen:0\n")
 					} else if cert.MaxPathLen > 0 {
 						buf.WriteString(fmt.Sprintf(", pathlen:%d\n", cert.MaxPathLen))
 					} else {
@@ -548,7 +548,7 @@ func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
 	var buf bytes.Buffer
 	buf.Grow(4096) // 4KiB should be enough
 
-	buf.WriteString(fmt.Sprintf("Certificate Request:\n"))
+	buf.WriteString("Certificate Request:\n")
 	buf.WriteString(fmt.Sprintf("%4sData:\n", ""))
 	printVersion(csr.Version, &buf)
 
