@@ -299,28 +299,28 @@ func printName(names []pkix.AttributeTypeAndValue, buf *bytes.Buffer) []string {
 		}
 	}
 	if len(values) > 0 {
-		buf.WriteString(values[0])
+		fmt.Fprint(buf, values[0])
 		for i := 1; i < len(values); i++ {
-			buf.WriteString("," + values[i])
+			fmt.Fprint(buf, ","+values[i])
 		}
-		buf.WriteString("\n")
+		fmt.Fprint(buf, "\n")
 	}
 	return values
 }
 
 // dsaKeyPrinter formats the Y, P, Q, or G components of a DSA public key.
 func dsaKeyPrinter(name string, val *big.Int, buf *bytes.Buffer) {
-	buf.WriteString(fmt.Sprintf("%16s%s:", "", name))
+	fmt.Fprintf(buf, "%16s%s:", "", name)
 	for i, b := range val.Bytes() {
 		if (i % 15) == 0 {
-			buf.WriteString(fmt.Sprintf("\n%20s", ""))
+			fmt.Fprintf(buf, "\n%20s", "")
 		}
-		buf.WriteString(fmt.Sprintf("%02x", b))
+		fmt.Fprintf(buf, "%02x", b)
 		if i != len(val.Bytes())-1 {
-			buf.WriteString(":")
+			fmt.Fprint(buf, ":")
 		}
 	}
-	buf.WriteString("\n")
+	fmt.Fprint(buf, "\n")
 }
 
 func printVersion(version int, buf *bytes.Buffer) {
@@ -328,43 +328,43 @@ func printVersion(version int, buf *bytes.Buffer) {
 	if hexVersion < 0 {
 		hexVersion = 0
 	}
-	buf.WriteString(fmt.Sprintf("%8sVersion: %d (%#x)\n", "", version, hexVersion))
+	fmt.Fprintf(buf, "%8sVersion: %d (%#x)\n", "", version, hexVersion)
 }
 
 func printSubjectInformation(subj *pkix.Name, pkAlgo x509.PublicKeyAlgorithm, pk interface{}, buf *bytes.Buffer) error {
-	buf.WriteString(fmt.Sprintf("%8sSubject:", ""))
+	fmt.Fprintf(buf, "%8sSubject:", "")
 	if len(subj.Names) > 0 {
-		buf.WriteString(" ")
+		fmt.Fprint(buf, " ")
 		printName(subj.Names, buf)
 	} else {
-		buf.WriteString("\n")
+		fmt.Fprint(buf, "\n")
 	}
-	buf.WriteString(fmt.Sprintf("%8sSubject Public Key Info:\n%12sPublic Key Algorithm: ", "", ""))
+	fmt.Fprintf(buf, "%8sSubject Public Key Info:\n%12sPublic Key Algorithm: ", "", "")
 	switch pkAlgo {
 	case x509.RSA:
-		buf.WriteString("RSA\n")
+		fmt.Fprint(buf, "RSA\n")
 		if rsaKey, ok := pk.(*rsa.PublicKey); ok {
-			buf.WriteString(fmt.Sprintf("%16sPublic-Key: (%d bit)\n", "", rsaKey.N.BitLen()))
+			fmt.Fprintf(buf, "%16sPublic-Key: (%d bit)\n", "", rsaKey.N.BitLen())
 			// Some implementations (notably OpenSSL) prepend 0x00 to the modulus
 			// if its most-significant bit is set. There is no need to do that here
 			// because the modulus is always unsigned and the extra byte can be
 			// confusing given the bit length.
-			buf.WriteString(fmt.Sprintf("%16sModulus:", ""))
+			fmt.Fprintf(buf, "%16sModulus:", "")
 			for i, val := range rsaKey.N.Bytes() {
 				if (i % 15) == 0 {
-					buf.WriteString(fmt.Sprintf("\n%20s", ""))
+					fmt.Fprintf(buf, "\n%20s", "")
 				}
-				buf.WriteString(fmt.Sprintf("%02x", val))
+				fmt.Fprintf(buf, "%02x", val)
 				if i != len(rsaKey.N.Bytes())-1 {
-					buf.WriteString(":")
+					fmt.Fprint(buf, ":")
 				}
 			}
-			buf.WriteString(fmt.Sprintf("\n%16sExponent: %d (%#x)\n", "", rsaKey.E, rsaKey.E))
+			fmt.Fprintf(buf, "\n%16sExponent: %d (%#x)\n", "", rsaKey.E, rsaKey.E)
 		} else {
 			return errors.New("certinfo: Expected rsa.PublicKey for type x509.RSA")
 		}
 	case x509.DSA:
-		buf.WriteString("DSA\n")
+		fmt.Fprint(buf, "DSA\n")
 		if dsaKey, ok := pk.(*dsa.PublicKey); ok {
 			dsaKeyPrinter("pub", dsaKey.Y, buf)
 			dsaKeyPrinter("P", dsaKey.P, buf)
@@ -374,29 +374,29 @@ func printSubjectInformation(subj *pkix.Name, pkAlgo x509.PublicKeyAlgorithm, pk
 			return errors.New("certinfo: Expected dsa.PublicKey for type x509.DSA")
 		}
 	case x509.ECDSA:
-		buf.WriteString("ECDSA\n")
+		fmt.Fprint(buf, "ECDSA\n")
 		if ecdsaKey, ok := pk.(*ecdsa.PublicKey); ok {
-			buf.WriteString(fmt.Sprintf("%16sPublic-Key: (%d bit)\n", "", ecdsaKey.Params().BitSize))
+			fmt.Fprintf(buf, "%16sPublic-Key: (%d bit)\n", "", ecdsaKey.Params().BitSize)
 			dsaKeyPrinter("X", ecdsaKey.X, buf)
 			dsaKeyPrinter("Y", ecdsaKey.Y, buf)
-			buf.WriteString(fmt.Sprintf("%16sCurve: %s\n", "", ecdsaKey.Params().Name))
+			fmt.Fprintf(buf, "%16sCurve: %s\n", "", ecdsaKey.Params().Name)
 		} else {
 			return errors.New("certinfo: Expected ecdsa.PublicKey for type x509.DSA")
 		}
 	case x509.Ed25519:
-		buf.WriteString("Ed25519\n")
+		fmt.Fprint(buf, "Ed25519\n")
 		if ed25519Key, ok := pk.(ed25519.PublicKey); ok {
-			buf.WriteString(fmt.Sprintf("%16sPublic-Key: (%d bit)", "", len(ed25519Key)))
+			fmt.Fprintf(buf, "%16sPublic-Key: (%d bit)", "", len(ed25519Key))
 			for i, b := range ed25519Key {
 				if (i % 15) == 0 {
-					buf.WriteString(fmt.Sprintf("\n%20s", ""))
+					fmt.Fprintf(buf, "\n%20s", "")
 				}
-				buf.WriteString(fmt.Sprintf("%02x", b))
+				fmt.Fprintf(buf, "%02x", b)
 				if i != len(ed25519Key)-1 {
-					buf.WriteString(":")
+					fmt.Fprint(buf, ":")
 				}
 			}
-			buf.WriteString("\n")
+			fmt.Fprint(buf, "\n")
 		} else {
 			return errors.New("certinfo: Expected ed25519.PublicKey for type x509.ED25519")
 		}
@@ -408,11 +408,11 @@ func printSubjectInformation(subj *pkix.Name, pkAlgo x509.PublicKeyAlgorithm, pk
 
 func printSubjKeyID(ext pkix.Extension, buf *bytes.Buffer) error {
 	// subjectKeyIdentifier: RFC 5280, 4.2.1.2
-	buf.WriteString(fmt.Sprintf("%12sX509v3 Subject Key Identifier:", ""))
+	fmt.Fprintf(buf, "%12sX509v3 Subject Key Identifier:", "")
 	if ext.Critical {
-		buf.WriteString(" critical\n")
+		fmt.Fprint(buf, " critical\n")
 	} else {
-		buf.WriteString("\n")
+		fmt.Fprint(buf, "\n")
 	}
 	var subjectKeyID []byte
 	if _, err := asn1.Unmarshal(ext.Value, &subjectKeyID); err != nil {
@@ -420,12 +420,12 @@ func printSubjKeyID(ext pkix.Extension, buf *bytes.Buffer) error {
 	}
 	for i := 0; i < len(subjectKeyID); i++ {
 		if i == 0 {
-			buf.WriteString(fmt.Sprintf("%16s%02X", "", subjectKeyID[0]))
+			fmt.Fprintf(buf, "%16s%02X", "", subjectKeyID[0])
 		} else {
-			buf.WriteString(fmt.Sprintf(":%02X", subjectKeyID[i]))
+			fmt.Fprintf(buf, ":%02X", subjectKeyID[i])
 		}
 	}
-	buf.WriteString("\n")
+	fmt.Fprint(buf, "\n")
 	return nil
 }
 
@@ -448,48 +448,48 @@ func forEachSAN(der cryptobyte.String, callback func(tag int, data []byte) error
 }
 
 func printOtherName(on otherName, buf *bytes.Buffer) {
-	buf.WriteString(fmt.Sprintf("%16sOtherName: Type: %s", "", on.TypeID))
-	buf.WriteString(fmt.Sprintf(", Value: 0x%x", on.Value.Bytes))
-	buf.WriteString("\n")
+	fmt.Fprintf(buf, "%16sOtherName: Type: %s", "", on.TypeID)
+	fmt.Fprintf(buf, ", Value: 0x%x", on.Value.Bytes)
+	fmt.Fprint(buf, "\n")
 }
 
 func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ipAddresses []net.IP, uris []*url.URL, buf *bytes.Buffer) error {
 	// subjectAltName: RFC 5280, 4.2.1.6
 	// TODO: Currently crypto/x509 only extracts DNS, email, and IP addresses.
 	// We should add the others to it or implement them here.
-	buf.WriteString(fmt.Sprintf("%12sX509v3 Subject Alternative Name:", ""))
+	fmt.Fprintf(buf, "%12sX509v3 Subject Alternative Name:", "")
 	if ext.Critical {
-		buf.WriteString(" critical\n")
+		fmt.Fprint(buf, " critical\n")
 	} else {
-		buf.WriteString("\n")
+		fmt.Fprint(buf, "\n")
 	}
 	if len(dnsNames) > 0 {
-		buf.WriteString(fmt.Sprintf("%16sDNS:%s", "", dnsNames[0]))
+		fmt.Fprintf(buf, "%16sDNS:%s", "", dnsNames[0])
 		for i := 1; i < len(dnsNames); i++ {
-			buf.WriteString(fmt.Sprintf(", DNS:%s", dnsNames[i]))
+			fmt.Fprintf(buf, ", DNS:%s", dnsNames[i])
 		}
-		buf.WriteString("\n")
+		fmt.Fprint(buf, "\n")
 	}
 	if len(emailAddresses) > 0 {
-		buf.WriteString(fmt.Sprintf("%16semail:%s", "", emailAddresses[0]))
+		fmt.Fprintf(buf, "%16semail:%s", "", emailAddresses[0])
 		for i := 1; i < len(emailAddresses); i++ {
-			buf.WriteString(fmt.Sprintf(", email:%s", emailAddresses[i]))
+			fmt.Fprintf(buf, ", email:%s", emailAddresses[i])
 		}
-		buf.WriteString("\n")
+		fmt.Fprint(buf, "\n")
 	}
 	if len(ipAddresses) > 0 {
-		buf.WriteString(fmt.Sprintf("%16sIP Address:%s", "", ipAddresses[0].String())) // XXX verify string format
+		fmt.Fprintf(buf, "%16sIP Address:%s", "", ipAddresses[0].String()) // XXX verify string format
 		for i := 1; i < len(ipAddresses); i++ {
-			buf.WriteString(fmt.Sprintf(", IP Address:%s", ipAddresses[i].String()))
+			fmt.Fprintf(buf, ", IP Address:%s", ipAddresses[i].String())
 		}
-		buf.WriteString("\n")
+		fmt.Fprint(buf, "\n")
 	}
 	if len(uris) > 0 {
-		buf.WriteString(fmt.Sprintf("%16sURI:%s", "", uris[0].String()))
+		fmt.Fprintf(buf, "%16sURI:%s", "", uris[0].String())
 		for i := 1; i < len(uris); i++ {
-			buf.WriteString(fmt.Sprintf(", URI:%s", uris[i].String()))
+			fmt.Fprintf(buf, ", URI:%s", uris[i].String())
 		}
-		buf.WriteString("\n")
+		fmt.Fprint(buf, "\n")
 	}
 
 	// Parse other names ignoring errors
@@ -509,37 +509,37 @@ func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ip
 					return nil //nolint:nilerr // ignore errors as instructed above
 				}
 				if pi.IdentifierValue != "" {
-					buf.WriteString(fmt.Sprintf("%16sPermanent Identifier: %s", "", pi.IdentifierValue))
+					fmt.Fprintf(buf, "%16sPermanent Identifier: %s", "", pi.IdentifierValue)
 				}
 				if len(pi.Assigner) > 0 {
-					buf.WriteString(fmt.Sprintf(", Assigner: %s", pi.Assigner.String()))
+					fmt.Fprintf(buf, ", Assigner: %s", pi.Assigner.String())
 				}
-				buf.WriteString("\n")
+				fmt.Fprint(buf, "\n")
 			case on.TypeID.Equal(oidHardwareModuleName):
 				var hmn hardwareModuleName
 				if _, err := asn1.Unmarshal(on.Value.Bytes, &hmn); err != nil {
 					printOtherName(on, buf)
 					return nil //nolint:nilerr // ignore errors as instructed above
 				}
-				buf.WriteString(fmt.Sprintf("%16sHardware Module Name: Type: %s", "", hmn.Type.String()))
-				buf.WriteString(fmt.Sprintf(", Serial Number: %s", hmn.SerialNumber))
-				buf.WriteString("\n")
+				fmt.Fprintf(buf, "%16sHardware Module Name: Type: %s", "", hmn.Type.String())
+				fmt.Fprintf(buf, ", Serial Number: %s", hmn.SerialNumber)
+				fmt.Fprint(buf, "\n")
 			case on.TypeID.Equal(oidUserPrincipalName):
 				var upn userPrincipalName
 				if _, err := asn1.UnmarshalWithParams(on.Value.Bytes, &upn.UPN, "utf8"); err != nil {
 					printOtherName(on, buf)
 					return nil //nolint:nilerr // ignore errors as instructed above
 				}
-				buf.WriteString(fmt.Sprintf("%16sUPN: %s", "", upn.UPN))
-				buf.WriteString("\n")
+				fmt.Fprintf(buf, "%16sUPN: %s", "", upn.UPN)
+				fmt.Fprint(buf, "\n")
 			case on.TypeID.Equal(oidSigstoreOtherName):
 				var son string
 				if _, err := asn1.Unmarshal(on.Value.Bytes, &son); err != nil {
 					printOtherName(on, buf)
 					return nil //nolint:nilerr // ignore errors as instructed above
 				}
-				buf.WriteString(fmt.Sprintf("%16sSigstore Identity: %s", "", son))
-				buf.WriteString("\n")
+				fmt.Fprintf(buf, "%16sSigstore Identity: %s", "", son)
+				fmt.Fprint(buf, "\n")
 			default:
 				printOtherName(on, buf)
 			}
@@ -555,14 +555,14 @@ func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ip
 				}
 				switch {
 				case attr.ID.Equal(oidTPMManufacturer):
-					buf.WriteString(fmt.Sprintf("%16sTPM Manufacturer: %s", "", attr.Value))
-					buf.WriteString("\n")
+					fmt.Fprintf(buf, "%16sTPM Manufacturer: %s", "", attr.Value)
+					fmt.Fprint(buf, "\n")
 				case attr.ID.Equal(oidTPMModel):
-					buf.WriteString(fmt.Sprintf("%16sTPM Model: %s", "", attr.Value))
-					buf.WriteString("\n")
+					fmt.Fprintf(buf, "%16sTPM Model: %s", "", attr.Value)
+					fmt.Fprint(buf, "\n")
 				case attr.ID.Equal(oidTPMVersion):
-					buf.WriteString(fmt.Sprintf("%16sTPM Version: %s", "", attr.Value))
-					buf.WriteString("\n")
+					fmt.Fprintf(buf, "%16sTPM Version: %s", "", attr.Value)
+					fmt.Fprint(buf, "\n")
 				}
 			}
 		}
@@ -571,17 +571,17 @@ func printSubjAltNames(ext pkix.Extension, dnsNames, emailAddresses []string, ip
 }
 
 func printSignature(sigAlgo x509.SignatureAlgorithm, sig []byte, buf *bytes.Buffer) {
-	buf.WriteString(fmt.Sprintf("%4sSignature Algorithm: %s", "", sigAlgo))
+	fmt.Fprintf(buf, "%4sSignature Algorithm: %s", "", sigAlgo)
 	for i, val := range sig {
 		if (i % 18) == 0 {
-			buf.WriteString(fmt.Sprintf("\n%9s", ""))
+			fmt.Fprintf(buf, "\n%9s", "")
 		}
-		buf.WriteString(fmt.Sprintf("%02x", val))
+		fmt.Fprintf(buf, "%02x", val)
 		if i != len(sig)-1 {
-			buf.WriteString(":")
+			fmt.Fprint(buf, ":")
 		}
 	}
-	buf.WriteString("\n")
+	fmt.Fprint(buf, "\n")
 }
 
 func toBase64(b []byte) string {
@@ -589,25 +589,25 @@ func toBase64(b []byte) string {
 }
 
 func printSCTSignature(sig ct.DigitallySigned, buf *bytes.Buffer) {
-	buf.WriteString(fmt.Sprintf("%20sSignature Algorithm: %s-%s", "", sig.Algorithm.Hash, sig.Algorithm.Signature))
+	fmt.Fprintf(buf, "%20sSignature Algorithm: %s-%s", "", sig.Algorithm.Hash, sig.Algorithm.Signature)
 	for i, val := range sig.Signature {
 		if (i % 18) == 0 {
-			buf.WriteString(fmt.Sprintf("\n%22s", ""))
+			fmt.Fprintf(buf, "\n%22s", "")
 		}
-		buf.WriteString(fmt.Sprintf("%02x", val))
+		fmt.Fprintf(buf, "%02x", val)
 		if i != len(sig.Signature)-1 {
-			buf.WriteString(":")
+			fmt.Fprint(buf, ":")
 		}
 	}
-	buf.WriteString("\n")
+	fmt.Fprint(buf, "\n")
 }
 
 func printExtensionHeader(name string, ext pkix.Extension, buf *bytes.Buffer) {
-	buf.WriteString(fmt.Sprintf("%12s%s:", "", name))
+	fmt.Fprintf(buf, "%12s%s:", "", name)
 	if ext.Critical {
-		buf.WriteString(" critical\n")
+		fmt.Fprint(buf, " critical\n")
 	} else {
-		buf.WriteString("\n")
+		fmt.Fprint(buf, "\n")
 	}
 }
 
@@ -621,7 +621,7 @@ func printRunes(ext pkix.Extension, buf *bytes.Buffer) {
 			sanitized[i] = '.'
 		}
 	}
-	buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(sanitized)))
+	fmt.Fprintf(buf, "%16s%s\n", "", string(sanitized))
 }
 
 // CertificateShortText returns the human-readable string representation of the
@@ -640,26 +640,29 @@ func CertificateRequestShortText(cr *x509.CertificateRequest) (string, error) {
 // of the certificate cert. The format is similar (but not identical)
 // to the OpenSSL way of printing certificates.
 func CertificateText(cert *x509.Certificate) (string, error) {
-	var buf bytes.Buffer
-	buf.Grow(4096) // 4KiB should be enough
+	var (
+		bbuf bytes.Buffer
+	)
+	bbuf.Grow(4096) // 4KiB should be enough
+	buf := &bbuf
 
-	buf.WriteString("Certificate:\n")
-	buf.WriteString(fmt.Sprintf("%4sData:\n", ""))
-	printVersion(cert.Version, &buf)
-	buf.WriteString(fmt.Sprintf("%8sSerial Number: %d (%#x)\n", "", cert.SerialNumber, cert.SerialNumber))
-	buf.WriteString(fmt.Sprintf("%4sSignature Algorithm: %s\n", "", cert.SignatureAlgorithm))
+	fmt.Fprint(buf, "Certificate:\n")
+	fmt.Fprintf(buf, "%4sData:\n", "")
+	printVersion(cert.Version, buf)
+	fmt.Fprintf(buf, "%8sSerial Number: %d (%#x)\n", "", cert.SerialNumber, cert.SerialNumber)
+	fmt.Fprintf(buf, "%4sSignature Algorithm: %s\n", "", cert.SignatureAlgorithm)
 
 	// Issuer information
-	buf.WriteString(fmt.Sprintf("%8sIssuer: ", ""))
-	printName(cert.Issuer.Names, &buf)
+	fmt.Fprintf(buf, "%8sIssuer: ", "")
+	printName(cert.Issuer.Names, buf)
 
 	// Validity information
-	buf.WriteString(fmt.Sprintf("%8sValidity\n", ""))
-	buf.WriteString(fmt.Sprintf("%12sNot Before: %s\n", "", cert.NotBefore.Format(validityTimeFormat)))
-	buf.WriteString(fmt.Sprintf("%12sNot After : %s\n", "", cert.NotAfter.Format(validityTimeFormat)))
+	fmt.Fprintf(buf, "%8sValidity\n", "")
+	fmt.Fprintf(buf, "%12sNot Before: %s\n", "", cert.NotBefore.Format(validityTimeFormat))
+	fmt.Fprintf(buf, "%12sNot After : %s\n", "", cert.NotAfter.Format(validityTimeFormat))
 
 	// Subject information
-	err := printSubjectInformation(&cert.Subject, cert.PublicKeyAlgorithm, cert.PublicKey, &buf)
+	err := printSubjectInformation(&cert.Subject, cert.PublicKeyAlgorithm, cert.PublicKey, buf)
 	if err != nil {
 		return "", err
 	}
@@ -670,57 +673,57 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 		return "", fmt.Errorf("certinfo: Error parsing TBS unique attributes: %w", err)
 	}
 	if len(issuerUID) > 0 {
-		buf.WriteString(fmt.Sprintf("%8sIssuer Unique ID: %02x", "", issuerUID[0]))
+		fmt.Fprintf(buf, "%8sIssuer Unique ID: %02x", "", issuerUID[0])
 		for i := 1; i < len(issuerUID); i++ {
-			buf.WriteString(fmt.Sprintf(":%02x", issuerUID[i]))
+			fmt.Fprintf(buf, ":%02x", issuerUID[i])
 		}
-		buf.WriteString("\n")
+		fmt.Fprint(buf, "\n")
 	}
 	if len(subjectUID) > 0 {
-		buf.WriteString(fmt.Sprintf("%8sSubject Unique ID: %02x", "", subjectUID[0]))
+		fmt.Fprintf(buf, "%8sSubject Unique ID: %02x", "", subjectUID[0])
 		for i := 1; i < len(subjectUID); i++ {
-			buf.WriteString(fmt.Sprintf(":%02x", subjectUID[i]))
+			fmt.Fprintf(buf, ":%02x", subjectUID[i])
 		}
-		buf.WriteString("\n")
+		fmt.Fprint(buf, "\n")
 	}
 
 	// Optional extensions for X509v3
 	if cert.Version == 3 && len(cert.Extensions) > 0 {
-		buf.WriteString(fmt.Sprintf("%8sX509v3 extensions:\n", ""))
+		fmt.Fprintf(buf, "%8sX509v3 extensions:\n", "")
 		for _, ext := range cert.Extensions {
 			//nolint:gocritic // avoid nested switch statements
 			if len(ext.Id) == 4 && ext.Id[0] == 2 && ext.Id[1] == 5 && ext.Id[2] == 29 {
 				switch ext.Id[3] {
 				case 9:
-					buf.WriteString(fmt.Sprintf("%12sX509v3 Subject Directory Attributes:", ""))
+					fmt.Fprintf(buf, "%12sX509v3 Subject Directory Attributes:", "")
 					if ext.Critical {
-						buf.WriteString(" critical\n")
+						fmt.Fprint(buf, " critical\n")
 					} else {
-						buf.WriteString("\n")
+						fmt.Fprint(buf, "\n")
 					}
 					var sda subjectDirectoryAttributes
 					if rest, err := asn1.Unmarshal(ext.Value, &sda); err != nil || len(rest) > 0 {
-						printRunes(ext, &buf)
+						printRunes(ext, buf)
 						continue
 					}
 
 					if sda.Attribute.Type.Equal(oidTPMSpecification) {
 						var spec tpmSpecification
 						if _, err := asn1.Unmarshal(sda.Attribute.Value.Bytes, &spec); err == nil {
-							buf.WriteString(fmt.Sprintf("%16sTPM Specification: Family: %s, Level: %d, Revision: %d\n", "", spec.Family, spec.Level, spec.Revision))
+							fmt.Fprintf(buf, "%16sTPM Specification: Family: %s, Level: %d, Revision: %d\n", "", spec.Family, spec.Level, spec.Revision)
 							continue
 						}
 					}
-					buf.WriteString(fmt.Sprintf("%16s%s: 0x%x\n", "", sda.Attribute.Type, sda.Attribute.Value.Bytes))
+					fmt.Fprintf(buf, "%16s%s: 0x%x\n", "", sda.Attribute.Type, sda.Attribute.Value.Bytes)
 				case 14:
-					err = printSubjKeyID(ext, &buf)
+					err = printSubjKeyID(ext, buf)
 				case 15:
 					// keyUsage: RFC 5280, 4.2.1.3
-					buf.WriteString(fmt.Sprintf("%12sX509v3 Key Usage:", ""))
+					fmt.Fprintf(buf, "%12sX509v3 Key Usage:", "")
 					if ext.Critical {
-						buf.WriteString(" critical\n")
+						fmt.Fprint(buf, " critical\n")
 					} else {
-						buf.WriteString("\n")
+						fmt.Fprint(buf, "\n")
 					}
 					usages := []string{}
 					if cert.KeyUsage&x509.KeyUsageDigitalSignature > 0 {
@@ -751,112 +754,112 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 						usages = append(usages, "Decipher Only")
 					}
 					if len(usages) > 0 {
-						buf.WriteString(fmt.Sprintf("%16s%s", "", usages[0]))
+						fmt.Fprintf(buf, "%16s%s", "", usages[0])
 						for i := 1; i < len(usages); i++ {
-							buf.WriteString(fmt.Sprintf(", %s", usages[i]))
+							fmt.Fprintf(buf, ", %s", usages[i])
 						}
-						buf.WriteString("\n")
+						fmt.Fprint(buf, "\n")
 					} else {
-						buf.WriteString(fmt.Sprintf("%16sNone\n", ""))
+						fmt.Fprintf(buf, "%16sNone\n", "")
 					}
 				case 17:
-					err = printSubjAltNames(ext, cert.DNSNames, cert.EmailAddresses, cert.IPAddresses, cert.URIs, &buf)
+					err = printSubjAltNames(ext, cert.DNSNames, cert.EmailAddresses, cert.IPAddresses, cert.URIs, buf)
 				case 19:
 					// basicConstraints: RFC 5280, 4.2.1.9
 					if !cert.BasicConstraintsValid {
 						break
 					}
-					buf.WriteString(fmt.Sprintf("%12sX509v3 Basic Constraints:", ""))
+					fmt.Fprintf(buf, "%12sX509v3 Basic Constraints:", "")
 					if ext.Critical {
-						buf.WriteString(" critical\n")
+						fmt.Fprint(buf, " critical\n")
 					} else {
-						buf.WriteString("\n")
+						fmt.Fprint(buf, "\n")
 					}
 					if cert.IsCA {
-						buf.WriteString(fmt.Sprintf("%16sCA:TRUE", ""))
+						fmt.Fprintf(buf, "%16sCA:TRUE", "")
 					} else {
-						buf.WriteString(fmt.Sprintf("%16sCA:FALSE", ""))
+						fmt.Fprintf(buf, "%16sCA:FALSE", "")
 					}
 					if cert.MaxPathLenZero {
-						buf.WriteString(", pathlen:0\n")
+						fmt.Fprint(buf, ", pathlen:0\n")
 					} else if cert.MaxPathLen > 0 {
-						buf.WriteString(fmt.Sprintf(", pathlen:%d\n", cert.MaxPathLen))
+						fmt.Fprintf(buf, ", pathlen:%d\n", cert.MaxPathLen)
 					} else {
-						buf.WriteString("\n")
+						fmt.Fprint(buf, "\n")
 					}
 				case 30:
 					// nameConstraints: RFC 5280, 4.2.1.10
 					// TODO: Currently crypto/x509 only supports "Permitted" and not "Excluded"
 					// subtrees. Furthermore it assumes all types are DNS names which is not
 					// necessarily true. This missing functionality should be implemented.
-					buf.WriteString(fmt.Sprintf("%12sX509v3 Name Constraints:", ""))
+					fmt.Fprintf(buf, "%12sX509v3 Name Constraints:", "")
 					if ext.Critical {
-						buf.WriteString(" critical\n")
+						fmt.Fprint(buf, " critical\n")
 					} else {
-						buf.WriteString("\n")
+						fmt.Fprint(buf, "\n")
 					}
 					if len(cert.PermittedDNSDomains) > 0 || len(cert.PermittedEmailAddresses) > 0 || len(cert.PermittedURIDomains) > 0 || len(cert.PermittedIPRanges) > 0 {
-						buf.WriteString(fmt.Sprintf("%16sPermitted:\n", ""))
+						fmt.Fprintf(buf, "%16sPermitted:\n", "")
 
 						if len(cert.PermittedDNSDomains) > 0 {
-							buf.WriteString(fmt.Sprintf("%18sDNS: %s", "", cert.PermittedDNSDomains[0]))
+							fmt.Fprintf(buf, "%18sDNS: %s", "", cert.PermittedDNSDomains[0])
 							for i := 1; i < len(cert.PermittedDNSDomains); i++ {
-								buf.WriteString(fmt.Sprintf(", %s", cert.PermittedDNSDomains[i]))
+								fmt.Fprintf(buf, ", %s", cert.PermittedDNSDomains[i])
 							}
-							buf.WriteString("\n")
+							fmt.Fprint(buf, "\n")
 						}
 						if len(cert.PermittedEmailAddresses) > 0 {
-							buf.WriteString(fmt.Sprintf("%18sEmail: %s", "", cert.PermittedEmailAddresses[0]))
+							fmt.Fprintf(buf, "%18sEmail: %s", "", cert.PermittedEmailAddresses[0])
 							for i := 1; i < len(cert.PermittedEmailAddresses); i++ {
-								buf.WriteString(fmt.Sprintf(", %s", cert.PermittedEmailAddresses[i]))
+								fmt.Fprintf(buf, ", %s", cert.PermittedEmailAddresses[i])
 							}
-							buf.WriteString("\n")
+							fmt.Fprint(buf, "\n")
 						}
 						if len(cert.PermittedURIDomains) > 0 {
-							buf.WriteString(fmt.Sprintf("%18sURI: %s", "", cert.PermittedURIDomains[0]))
+							fmt.Fprintf(buf, "%18sURI: %s", "", cert.PermittedURIDomains[0])
 							for i := 1; i < len(cert.PermittedURIDomains); i++ {
-								buf.WriteString(fmt.Sprintf(", %s", cert.PermittedURIDomains[i]))
+								fmt.Fprintf(buf, ", %s", cert.PermittedURIDomains[i])
 							}
-							buf.WriteString("\n")
+							fmt.Fprint(buf, "\n")
 						}
 						if len(cert.PermittedIPRanges) > 0 {
-							buf.WriteString(fmt.Sprintf("%18sIP Range: %s", "", cert.PermittedIPRanges[0]))
+							fmt.Fprintf(buf, "%18sIP Range: %s", "", cert.PermittedIPRanges[0])
 							for i := 1; i < len(cert.PermittedIPRanges); i++ {
-								buf.WriteString(fmt.Sprintf(", %s", cert.PermittedIPRanges[i]))
+								fmt.Fprintf(buf, ", %s", cert.PermittedIPRanges[i])
 							}
-							buf.WriteString("\n")
+							fmt.Fprint(buf, "\n")
 						}
 					}
 					if len(cert.ExcludedDNSDomains) > 0 || len(cert.ExcludedEmailAddresses) > 0 || len(cert.ExcludedURIDomains) > 0 || len(cert.ExcludedIPRanges) > 0 {
-						buf.WriteString(fmt.Sprintf("%16sExcluded:\n", ""))
+						fmt.Fprintf(buf, "%16sExcluded:\n", "")
 
 						if len(cert.ExcludedDNSDomains) > 0 {
-							buf.WriteString(fmt.Sprintf("%18sDNS: %s", "", cert.ExcludedDNSDomains[0]))
+							fmt.Fprintf(buf, "%18sDNS: %s", "", cert.ExcludedDNSDomains[0])
 							for i := 1; i < len(cert.ExcludedDNSDomains); i++ {
-								buf.WriteString(fmt.Sprintf(", %s", cert.ExcludedDNSDomains[i]))
+								fmt.Fprintf(buf, ", %s", cert.ExcludedDNSDomains[i])
 							}
-							buf.WriteString("\n")
+							fmt.Fprint(buf, "\n")
 						}
 						if len(cert.ExcludedEmailAddresses) > 0 {
-							buf.WriteString(fmt.Sprintf("%18sEmail: %s", "", cert.ExcludedEmailAddresses[0]))
+							fmt.Fprintf(buf, "%18sEmail: %s", "", cert.ExcludedEmailAddresses[0])
 							for i := 1; i < len(cert.ExcludedEmailAddresses); i++ {
-								buf.WriteString(fmt.Sprintf(", %s", cert.ExcludedEmailAddresses[i]))
+								fmt.Fprintf(buf, ", %s", cert.ExcludedEmailAddresses[i])
 							}
-							buf.WriteString("\n")
+							fmt.Fprint(buf, "\n")
 						}
 						if len(cert.ExcludedURIDomains) > 0 {
-							buf.WriteString(fmt.Sprintf("%18sURI: %s", "", cert.ExcludedURIDomains[0]))
+							fmt.Fprintf(buf, "%18sURI: %s", "", cert.ExcludedURIDomains[0])
 							for i := 1; i < len(cert.ExcludedURIDomains); i++ {
-								buf.WriteString(fmt.Sprintf(", %s", cert.ExcludedURIDomains[i]))
+								fmt.Fprintf(buf, ", %s", cert.ExcludedURIDomains[i])
 							}
-							buf.WriteString("\n")
+							fmt.Fprint(buf, "\n")
 						}
 						if len(cert.ExcludedIPRanges) > 0 {
-							buf.WriteString(fmt.Sprintf("%18sIP Range: %s", "", cert.ExcludedIPRanges[0]))
+							fmt.Fprintf(buf, "%18sIP Range: %s", "", cert.ExcludedIPRanges[0])
 							for i := 1; i < len(cert.ExcludedIPRanges); i++ {
-								buf.WriteString(fmt.Sprintf(", %s", cert.ExcludedIPRanges[i]))
+								fmt.Fprintf(buf, ", %s", cert.ExcludedIPRanges[i])
 							}
-							buf.WriteString("\n")
+							fmt.Fprint(buf, "\n")
 						}
 					}
 
@@ -864,52 +867,52 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					// CRLDistributionPoints: RFC 5280, 4.2.1.13
 					// TODO: Currently crypto/x509 does not fully implement this section,
 					// including types and reason flags.
-					buf.WriteString(fmt.Sprintf("%12sX509v3 CRL Distribution Points:", ""))
+					fmt.Fprintf(buf, "%12sX509v3 CRL Distribution Points:", "")
 					if ext.Critical {
-						buf.WriteString(" critical\n")
+						fmt.Fprint(buf, " critical\n")
 					} else {
-						buf.WriteString("\n")
+						fmt.Fprint(buf, "\n")
 					}
 					if len(cert.CRLDistributionPoints) > 0 {
-						buf.WriteString(fmt.Sprintf("%16sFull Name:\n%18sURI:%s", "", "", cert.CRLDistributionPoints[0]))
+						fmt.Fprintf(buf, "%16sFull Name:\n%18sURI:%s", "", "", cert.CRLDistributionPoints[0])
 						for i := 1; i < len(cert.CRLDistributionPoints); i++ {
-							buf.WriteString(fmt.Sprintf(", URI:%s", cert.CRLDistributionPoints[i]))
+							fmt.Fprintf(buf, ", URI:%s", cert.CRLDistributionPoints[i])
 						}
-						buf.WriteString("\n")
+						fmt.Fprint(buf, "\n")
 					}
 				case 32:
 					// certificatePoliciesExt: RFC 5280, 4.2.1.4
 					// TODO: Currently crypto/x509 does not fully impelment this section,
 					// including the Certification Practice Statement (CPS)
-					buf.WriteString(fmt.Sprintf("%12sX509v3 Certificate Policies:", ""))
+					fmt.Fprintf(buf, "%12sX509v3 Certificate Policies:", "")
 					if ext.Critical {
-						buf.WriteString(" critical\n")
+						fmt.Fprint(buf, " critical\n")
 					} else {
-						buf.WriteString("\n")
+						fmt.Fprint(buf, "\n")
 					}
 					for _, val := range cert.PolicyIdentifiers {
-						buf.WriteString(fmt.Sprintf("%16sPolicy: %s\n", "", val.String()))
+						fmt.Fprintf(buf, "%16sPolicy: %s\n", "", val.String())
 					}
 				case 35:
 					// authorityKeyIdentifier: RFC 5280, 4.2.1.1
-					buf.WriteString(fmt.Sprintf("%12sX509v3 Authority Key Identifier:", ""))
+					fmt.Fprintf(buf, "%12sX509v3 Authority Key Identifier:", "")
 					if ext.Critical {
-						buf.WriteString(" critical\n")
+						fmt.Fprint(buf, " critical\n")
 					} else {
-						buf.WriteString("\n")
+						fmt.Fprint(buf, "\n")
 					}
-					buf.WriteString(fmt.Sprintf("%16skeyid", ""))
+					fmt.Fprintf(buf, "%16skeyid", "")
 					for _, val := range cert.AuthorityKeyId {
-						buf.WriteString(fmt.Sprintf(":%02X", val))
+						fmt.Fprintf(buf, ":%02X", val)
 					}
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				case 37:
 					// extKeyUsage: RFC 5280, 4.2.1.12
-					buf.WriteString(fmt.Sprintf("%12sX509v3 Extended Key Usage:", ""))
+					fmt.Fprintf(buf, "%12sX509v3 Extended Key Usage:", "")
 					if ext.Critical {
-						buf.WriteString(" critical\n")
+						fmt.Fprint(buf, " critical\n")
 					} else {
-						buf.WriteString("\n")
+						fmt.Fprint(buf, "\n")
 					}
 					var list []string
 					for _, val := range cert.ExtKeyUsage {
@@ -946,14 +949,14 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 						}
 					}
 					if len(list) > 0 {
-						buf.WriteString(fmt.Sprintf("%16s%s", "", list[0]))
+						fmt.Fprintf(buf, "%16s%s", "", list[0])
 						for i := 1; i < len(list); i++ {
-							buf.WriteString(fmt.Sprintf(", %s", list[i]))
+							fmt.Fprintf(buf, ", %s", list[i])
 						}
-						buf.WriteString("\n")
+						fmt.Fprint(buf, "\n")
 					}
 				default:
-					buf.WriteString(fmt.Sprintf("Unknown extension 2.5.29.%d\n", ext.Id[3]))
+					fmt.Fprintf(buf, "Unknown extension 2.5.29.%d\n", ext.Id[3])
 				}
 				if err != nil {
 					return "", err
@@ -966,25 +969,25 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 			switch {
 			case ext.Id.Equal(oidExtensionAuthorityInfoAccess):
 				// authorityInfoAccess: RFC 5280, 4.2.2.1
-				buf.WriteString(fmt.Sprintf("%12sAuthority Information Access:", ""))
+				fmt.Fprintf(buf, "%12sAuthority Information Access:", "")
 				if ext.Critical {
-					buf.WriteString(" critical\n")
+					fmt.Fprint(buf, " critical\n")
 				} else {
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				}
 				if len(cert.OCSPServer) > 0 {
-					buf.WriteString(fmt.Sprintf("%16sOCSP - URI:%s", "", cert.OCSPServer[0]))
+					fmt.Fprintf(buf, "%16sOCSP - URI:%s", "", cert.OCSPServer[0])
 					for i := 1; i < len(cert.OCSPServer); i++ {
-						buf.WriteString(fmt.Sprintf(",URI:%s", cert.OCSPServer[i]))
+						fmt.Fprintf(buf, ",URI:%s", cert.OCSPServer[i])
 					}
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				}
 				if len(cert.IssuingCertificateURL) > 0 {
-					buf.WriteString(fmt.Sprintf("%16sCA Issuers - URI:%s", "", cert.IssuingCertificateURL[0]))
+					fmt.Fprintf(buf, "%16sCA Issuers - URI:%s", "", cert.IssuingCertificateURL[0])
 					for i := 1; i < len(cert.IssuingCertificateURL); i++ {
-						buf.WriteString(fmt.Sprintf(",URI:%s", cert.IssuingCertificateURL[i]))
+						fmt.Fprintf(buf, ",URI:%s", cert.IssuingCertificateURL[i])
 					}
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				}
 			case ext.Id.Equal(oidNSComment):
 				// Netscape comment
@@ -994,16 +997,16 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					return "", fmt.Errorf("certinfo: Error parsing OID %q", ext.Id.String())
 				}
 				if ext.Critical {
-					buf.WriteString(fmt.Sprintf("%12sNetscape Comment: critical\n%16s%s\n", "", "", comment))
+					fmt.Fprintf(buf, "%12sNetscape Comment: critical\n%16s%s\n", "", "", comment)
 				} else {
-					buf.WriteString(fmt.Sprintf("%12sNetscape Comment:\n%16s%s\n", "", "", comment))
+					fmt.Fprintf(buf, "%12sNetscape Comment:\n%16s%s\n", "", "", comment)
 				}
 			case ext.Id.Equal(oidStepProvisioner):
-				buf.WriteString(fmt.Sprintf("%12sX509v3 Step Provisioner:", ""))
+				fmt.Fprintf(buf, "%12sX509v3 Step Provisioner:", "")
 				if ext.Critical {
-					buf.WriteString(" critical\n")
+					fmt.Fprint(buf, " critical\n")
 				} else {
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				}
 				val := &stepProvisioner{}
 				rest, err := asn1.Unmarshal(ext.Value, val)
@@ -1019,10 +1022,10 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					typ = fmt.Sprintf("%d (unknown)", val.Type)
 				}
 
-				buf.WriteString(fmt.Sprintf("%16sType: %s\n", "", typ))
-				buf.WriteString(fmt.Sprintf("%16sName: %s\n", "", string(val.Name)))
+				fmt.Fprintf(buf, "%16sType: %s\n", "", typ)
+				fmt.Fprintf(buf, "%16sName: %s\n", "", string(val.Name))
 				if len(val.CredentialID) != 0 {
-					buf.WriteString(fmt.Sprintf("%16sCredentialID: %s\n", "", string(val.CredentialID)))
+					fmt.Fprintf(buf, "%16sCredentialID: %s\n", "", string(val.CredentialID))
 				}
 				var key, value string
 				for i, l := 0, len(val.KeyValuePairs); i < l; i += 2 {
@@ -1030,23 +1033,23 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					if i+1 < l {
 						value = val.KeyValuePairs[i+1]
 					}
-					buf.WriteString(fmt.Sprintf("%16s%s: %s\n", "", key, value))
+					fmt.Fprintf(buf, "%16s%s: %s\n", "", key, value)
 				}
 			case ext.Id.Equal(oidStepCertificateAuthority):
-				buf.WriteString(fmt.Sprintf("%12sX509v3 Step Registration Authority:", ""))
+				fmt.Fprintf(buf, "%12sX509v3 Step Registration Authority:", "")
 				if ext.Critical {
-					buf.WriteString(" critical\n")
+					fmt.Fprint(buf, " critical\n")
 				} else {
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				}
 				val := &stepCertificateAuthority{}
 				rest, err := asn1.Unmarshal(ext.Value, val)
 				if err != nil || len(rest) > 0 {
 					return "", fmt.Errorf("certinfo: Error parsing OID %q", ext.Id.String())
 				}
-				buf.WriteString(fmt.Sprintf("%16sType: %s\n", "", val.Type))
+				fmt.Fprintf(buf, "%16sType: %s\n", "", val.Type)
 				if val.CertificateID != "" {
-					buf.WriteString(fmt.Sprintf("%16sCertificateID: %s\n", "", val.CertificateID))
+					fmt.Fprintf(buf, "%16sCertificateID: %s\n", "", val.CertificateID)
 				}
 				var key, value string
 				for i, l := 0, len(val.KeyValuePairs); i < l; i += 2 {
@@ -1054,14 +1057,14 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					if i+1 < l {
 						value = val.KeyValuePairs[i+1]
 					}
-					buf.WriteString(fmt.Sprintf("%16s%s: %s\n", "", key, value))
+					fmt.Fprintf(buf, "%16s%s: %s\n", "", key, value)
 				}
 			case ext.Id.Equal(oidStepManagedEndpoint):
-				buf.WriteString(fmt.Sprintf("%12sX509v3 Step Managed Endpoint:", ""))
+				fmt.Fprintf(buf, "%12sX509v3 Step Managed Endpoint:", "")
 				if ext.Critical {
-					buf.WriteString(" critical\n")
+					fmt.Fprint(buf, " critical\n")
 				} else {
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				}
 				val := &stepManagedEndpoint{}
 				rest, err := asn1.Unmarshal(ext.Value, val)
@@ -1077,14 +1080,14 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 					kind = fmt.Sprintf("%d (unknown)", val.Kind)
 				}
 
-				buf.WriteString(fmt.Sprintf("%16sKind: %s\n", "", kind))
-				buf.WriteString(fmt.Sprintf("%16sEndpointID: %s\n", "", val.EndpointID))
+				fmt.Fprintf(buf, "%16sKind: %s\n", "", kind)
+				fmt.Fprintf(buf, "%16sEndpointID: %s\n", "", val.EndpointID)
 			case ext.Id.Equal(oidSignedCertificateTimestampList):
-				buf.WriteString(fmt.Sprintf("%12sRFC6962 Certificate Transparency SCT:", ""))
+				fmt.Fprintf(buf, "%12sRFC6962 Certificate Transparency SCT:", "")
 				if ext.Critical {
-					buf.WriteString(" critical\n")
+					fmt.Fprint(buf, " critical\n")
 				} else {
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				}
 				var raw []byte
 				rest, err := asn1.Unmarshal(ext.Value, &raw)
@@ -1103,64 +1106,64 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 				for i, sct := range scts {
 					sec := int64(sct.Timestamp / 1000)
 					nsec := int64(sct.Timestamp % 1000)
-					buf.WriteString(fmt.Sprintf("%16sSCT [%d]:\n", "", i))
-					buf.WriteString(fmt.Sprintf("%20sVersion: %s (%#x)\n", "", sct.SCTVersion, int64(sct.SCTVersion)))
-					buf.WriteString(fmt.Sprintf("%20sLogID: %s\n", "", toBase64(sct.LogID.KeyID[:])))
-					buf.WriteString(fmt.Sprintf("%20sTimestamp: %s\n", "", time.Unix(sec, nsec*1e6).UTC().Format(sctTimeFormat)))
+					fmt.Fprintf(buf, "%16sSCT [%d]:\n", "", i)
+					fmt.Fprintf(buf, "%20sVersion: %s (%#x)\n", "", sct.SCTVersion, int64(sct.SCTVersion))
+					fmt.Fprintf(buf, "%20sLogID: %s\n", "", toBase64(sct.LogID.KeyID[:]))
+					fmt.Fprintf(buf, "%20sTimestamp: %s\n", "", time.Unix(sec, nsec*1e6).UTC().Format(sctTimeFormat))
 					// There are no available extensions
-					// buf.WriteString(fmt.Sprintf("%20sExtensions: %v\n", "", sct.Extensions))
-					printSCTSignature(sct.Signature, &buf)
+					// fmt.Fprintf(buf, "%20sExtensions: %v\n", "", sct.Extensions)
+					printSCTSignature(sct.Signature, buf)
 				}
 			case ext.Id.Equal(oidYubicoFirmwareVersion):
-				printExtensionHeader("X509v3 YubiKey Firmware Version", ext, &buf)
-				buf.WriteString(fmt.Sprintf("%16s%s\n", "", yubicoVersion(ext.Value)))
+				printExtensionHeader("X509v3 YubiKey Firmware Version", ext, buf)
+				fmt.Fprintf(buf, "%16s%s\n", "", yubicoVersion(ext.Value))
 			case ext.Id.Equal(oidYubicoSerialNumber):
 				var serialNumber int
 				rest, err := asn1.Unmarshal(ext.Value, &serialNumber)
 				if err != nil || len(rest) > 0 {
 					return "", fmt.Errorf("certinfo: Error parsing OID %q", ext.Id.String())
 				}
-				printExtensionHeader("X509v3 YubiKey Serial Number", ext, &buf)
-				buf.WriteString(fmt.Sprintf("%16s%d\n", "", serialNumber))
+				printExtensionHeader("X509v3 YubiKey Serial Number", ext, buf)
+				fmt.Fprintf(buf, "%16s%d\n", "", serialNumber)
 			case ext.Id.Equal(oidYubicoPolicy):
 				policies := yubicoPolicies(ext.Value)
-				printExtensionHeader("X509v3 YubiKey Policy", ext, &buf)
+				printExtensionHeader("X509v3 YubiKey Policy", ext, buf)
 				for _, p := range policies {
-					buf.WriteString(fmt.Sprintf("%16s%s\n", "", p))
+					fmt.Fprintf(buf, "%16s%s\n", "", p)
 				}
 			case ext.Id.Equal(oidYubicoFormfactor):
-				printExtensionHeader("X509v3 YubiKey Formfactor", ext, &buf)
-				buf.WriteString(fmt.Sprintf("%16s%s\n", "", yubicoFormfactor(ext.Value)))
+				printExtensionHeader("X509v3 YubiKey Formfactor", ext, buf)
+				fmt.Fprintf(buf, "%16s%s\n", "", yubicoFormfactor(ext.Value))
 			case ext.Id.Equal(oidYubicoFipsCertified):
-				printExtensionHeader("X509v3 YubiKey Certification", ext, &buf)
-				buf.WriteString(fmt.Sprintf("%16sFIPS Certified\n", ""))
+				printExtensionHeader("X509v3 YubiKey Certification", ext, buf)
+				fmt.Fprintf(buf, "%16sFIPS Certified\n", "")
 			case ext.Id.Equal(oidYubicoCspnCertified):
-				printExtensionHeader("X509v3 YubiKey Certification", ext, &buf)
-				buf.WriteString(fmt.Sprintf("%16sCSPN Certified\n", ""))
+				printExtensionHeader("X509v3 YubiKey Certification", ext, buf)
+				fmt.Fprintf(buf, "%16sCSPN Certified\n", "")
 			case ext.Id.Equal(oidSigstoreOIDCIssuer):
-				printExtensionHeader("Sigstore OIDC Issuer", ext, &buf)
-				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
+				printExtensionHeader("Sigstore OIDC Issuer", ext, buf)
+				fmt.Fprintf(buf, "%16s%s\n", "", string(ext.Value))
 			case ext.Id.Equal(oidSigstoreGithubWorkflowTrigger):
-				printExtensionHeader("Sigstore GitHub Workflow Trigger", ext, &buf)
-				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
+				printExtensionHeader("Sigstore GitHub Workflow Trigger", ext, buf)
+				fmt.Fprintf(buf, "%16s%s\n", "", string(ext.Value))
 			case ext.Id.Equal(oidSigstoreGithubWorkflowSha):
-				printExtensionHeader("Sigstore GitHub Workflow SHA Hash", ext, &buf)
-				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
+				printExtensionHeader("Sigstore GitHub Workflow SHA Hash", ext, buf)
+				fmt.Fprintf(buf, "%16s%s\n", "", string(ext.Value))
 			case ext.Id.Equal(oidSigstoreGithubWorkflowName):
-				printExtensionHeader("Sigstore GitHub Workflow Name", ext, &buf)
-				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
+				printExtensionHeader("Sigstore GitHub Workflow Name", ext, buf)
+				fmt.Fprintf(buf, "%16s%s\n", "", string(ext.Value))
 			case ext.Id.Equal(oidSigstoreGithubWorkflowRepository):
-				printExtensionHeader("Sigstore GitHub Workflow Repository", ext, &buf)
-				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
+				printExtensionHeader("Sigstore GitHub Workflow Repository", ext, buf)
+				fmt.Fprintf(buf, "%16s%s\n", "", string(ext.Value))
 			case ext.Id.Equal(oidSigstoreGithubWorkflowRef):
-				printExtensionHeader("Sigstore GitHub Workflow Ref", ext, &buf)
-				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(ext.Value)))
+				printExtensionHeader("Sigstore GitHub Workflow Ref", ext, buf)
+				fmt.Fprintf(buf, "%16s%s\n", "", string(ext.Value))
 			default:
-				buf.WriteString(fmt.Sprintf("%12s%s:", "", ext.Id.String()))
+				fmt.Fprintf(buf, "%12s%s:", "", ext.Id.String())
 				if ext.Critical {
-					buf.WriteString(" critical\n")
+					fmt.Fprint(buf, " critical\n")
 				} else {
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				}
 				value := bytes.Runes(ext.Value)
 				sanitized := make([]rune, len(value))
@@ -1171,13 +1174,13 @@ func CertificateText(cert *x509.Certificate) (string, error) {
 						sanitized[i] = '.'
 					}
 				}
-				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(sanitized)))
+				fmt.Fprintf(buf, "%16s%s\n", "", string(sanitized))
 			}
 		}
 	}
 
 	// Signature
-	printSignature(cert.SignatureAlgorithm, cert.Signature, &buf)
+	printSignature(cert.SignatureAlgorithm, cert.Signature, buf)
 
 	// Optional: Print the full PEM certificate
 	/*
@@ -1265,41 +1268,42 @@ var (
 // of the certificate request csr. The format is similar (but not identical)
 // to the OpenSSL way of printing certificates.
 func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
-	var buf bytes.Buffer
-	buf.Grow(4096) // 4KiB should be enough
+	var bbuf bytes.Buffer
+	bbuf.Grow(4096) // 4KiB should be enough
+	buf := &bbuf
 
-	buf.WriteString("Certificate Request:\n")
-	buf.WriteString(fmt.Sprintf("%4sData:\n", ""))
-	printVersion(csr.Version, &buf)
+	fmt.Fprint(buf, "Certificate Request:\n")
+	fmt.Fprintf(buf, "%4sData:\n", "")
+	printVersion(csr.Version, buf)
 
 	// Subject information
-	err := printSubjectInformation(&csr.Subject, csr.PublicKeyAlgorithm, csr.PublicKey, &buf)
+	err := printSubjectInformation(&csr.Subject, csr.PublicKeyAlgorithm, csr.PublicKey, buf)
 	if err != nil {
 		return "", err
 	}
 
 	// Optional extensions for PKCS #10, RFC 2986
 	if csr.Version == 0 && len(csr.Extensions) > 0 {
-		buf.WriteString(fmt.Sprintf("%8sRequested Extensions:\n", ""))
+		fmt.Fprintf(buf, "%8sRequested Extensions:\n", "")
 		unknownExts := []pkix.Extension{}
 		for _, ext := range csr.Extensions {
 			switch {
 			case ext.Id.Equal(oidExtSubjectKeyID):
-				err = printSubjKeyID(ext, &buf)
+				err = printSubjKeyID(ext, buf)
 			case ext.Id.Equal(oidExtSubjectAltName):
-				err = printSubjAltNames(ext, csr.DNSNames, csr.EmailAddresses, csr.IPAddresses, csr.URIs, &buf)
+				err = printSubjAltNames(ext, csr.DNSNames, csr.EmailAddresses, csr.IPAddresses, csr.URIs, buf)
 			case ext.Id.Equal(oidExtKeyUsage):
 				// keyUsage: RFC 5280, 4.2.1.3
 				ku, err := parseKeyUsage(ext.Value)
 				if err != nil {
-					buf.WriteString(fmt.Sprintf("%12sX509v3 Key Usage: failed to decode\n", ""))
+					fmt.Fprintf(buf, "%12sX509v3 Key Usage: failed to decode\n", "")
 					continue
 				}
-				buf.WriteString(fmt.Sprintf("%12sX509v3 Key Usage:", ""))
+				fmt.Fprintf(buf, "%12sX509v3 Key Usage:", "")
 				if ext.Critical {
-					buf.WriteString(" critical\n")
+					fmt.Fprint(buf, " critical\n")
 				} else {
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				}
 				kus := []struct {
 					ku   x509.KeyUsage
@@ -1322,40 +1326,40 @@ func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
 					}
 				}
 				if len(usages) > 0 {
-					buf.WriteString(fmt.Sprintf("%16s%s", "", usages[0]))
+					fmt.Fprintf(buf, "%16s%s", "", usages[0])
 					for i := 1; i < len(usages); i++ {
-						buf.WriteString(fmt.Sprintf(", %s", usages[i]))
+						fmt.Fprintf(buf, ", %s", usages[i])
 					}
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				} else {
-					buf.WriteString(fmt.Sprintf("%16sNone\n", ""))
+					fmt.Fprintf(buf, "%16sNone\n", "")
 				}
 			case ext.Id.Equal(oidExtBasicConstraints):
 				// basicConstraints: RFC 5280, 4.2.1.9
 				var constraints basicConstraints
 				_, err := asn1.Unmarshal(ext.Value, &constraints)
 				if err != nil {
-					buf.WriteString(fmt.Sprintf("%12sX509v3 Basic Constraints: failed to decode\n", ""))
+					fmt.Fprintf(buf, "%12sX509v3 Basic Constraints: failed to decode\n", "")
 					continue
 				}
-				buf.WriteString(fmt.Sprintf("%12sX509v3 Basic Constraints:", ""))
+				fmt.Fprintf(buf, "%12sX509v3 Basic Constraints:", "")
 				if ext.Critical {
-					buf.WriteString(" critical\n")
+					fmt.Fprint(buf, " critical\n")
 				} else {
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				}
 				if constraints.IsCA {
-					buf.WriteString(fmt.Sprintf("%16sCA:TRUE", ""))
+					fmt.Fprintf(buf, "%16sCA:TRUE", "")
 				} else {
-					buf.WriteString(fmt.Sprintf("%16sCA:FALSE", ""))
+					fmt.Fprintf(buf, "%16sCA:FALSE", "")
 				}
 				switch {
 				case constraints.MaxPathLen == 0:
-					buf.WriteString(", pathlen:0\n")
+					fmt.Fprint(buf, ", pathlen:0\n")
 				case constraints.MaxPathLen > 0:
-					buf.WriteString(fmt.Sprintf(", pathlen:%d\n", constraints.MaxPathLen))
+					fmt.Fprintf(buf, ", pathlen:%d\n", constraints.MaxPathLen)
 				default:
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				}
 			case ext.Id.Equal(oidExtNameConstraints):
 				// RFC 5280, 4.2.1.10
@@ -1374,11 +1378,11 @@ func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
 				var constraints nameConstraints
 				_, err := asn1.Unmarshal(ext.Value, &constraints)
 				if err != nil {
-					buf.WriteString(fmt.Sprintf("%12sX509v3 Name Constraints: failed to decode\n", ""))
+					fmt.Fprintf(buf, "%12sX509v3 Name Constraints: failed to decode\n", "")
 					continue
 				}
 				if len(constraints.Excluded) > 0 && ext.Critical {
-					buf.WriteString(fmt.Sprintf("%12sX509v3 Name Constraints: failed to decode: unexpected excluded name constraints\n", ""))
+					fmt.Fprintf(buf, "%12sX509v3 Name Constraints: failed to decode: unexpected excluded name constraints\n", "")
 					continue
 				}
 				var permittedDNSDomains []string
@@ -1388,18 +1392,18 @@ func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
 					}
 					permittedDNSDomains = append(permittedDNSDomains, subtree.Name)
 				}
-				buf.WriteString(fmt.Sprintf("%12sX509v3 Name Constraints:", ""))
+				fmt.Fprintf(buf, "%12sX509v3 Name Constraints:", "")
 				if ext.Critical {
-					buf.WriteString(" critical\n")
+					fmt.Fprint(buf, " critical\n")
 				} else {
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				}
 				if len(permittedDNSDomains) > 0 {
-					buf.WriteString(fmt.Sprintf("%16sPermitted:\n%18s%s", "", "", permittedDNSDomains[0]))
+					fmt.Fprintf(buf, "%16sPermitted:\n%18s%s", "", "", permittedDNSDomains[0])
 					for i := 1; i < len(permittedDNSDomains); i++ {
-						buf.WriteString(fmt.Sprintf(", %s", permittedDNSDomains[i]))
+						fmt.Fprintf(buf, ", %s", permittedDNSDomains[i])
 					}
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				}
 			case ext.Id.Equal(oidExtExtendedKeyUsage):
 				// extKeyUsage: RFC 5280, 4.2.1.12
@@ -1410,7 +1414,7 @@ func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
 				// KeyPurposeId ::= OBJECT IDENTIFIER
 				var keyUsage []asn1.ObjectIdentifier
 				if _, err = asn1.Unmarshal(ext.Value, &keyUsage); err != nil {
-					buf.WriteString(fmt.Sprintf("%12sX509v3 Extended Key Usage: failed to decode\n", ""))
+					fmt.Fprintf(buf, "%12sX509v3 Extended Key Usage: failed to decode\n", "")
 					continue
 				}
 				ekus := []struct {
@@ -1446,18 +1450,18 @@ func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
 						list = append(list, fmt.Sprintf("UNKNOWN(%s)", u.String()))
 					}
 				}
-				buf.WriteString(fmt.Sprintf("%12sX509v3 Extended Key Usage:", ""))
+				fmt.Fprintf(buf, "%12sX509v3 Extended Key Usage:", "")
 				if ext.Critical {
-					buf.WriteString(" critical\n")
+					fmt.Fprint(buf, " critical\n")
 				} else {
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				}
 				if len(list) > 0 {
-					buf.WriteString(fmt.Sprintf("%16s%s", "", list[0]))
+					fmt.Fprintf(buf, "%16s%s", "", list[0])
 					for i := 1; i < len(list); i++ {
-						buf.WriteString(fmt.Sprintf(", %s", list[i]))
+						fmt.Fprintf(buf, ", %s", list[i])
 					}
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				}
 			default:
 				unknownExts = append(unknownExts, ext)
@@ -1467,13 +1471,13 @@ func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
 			}
 		}
 		if len(unknownExts) > 0 {
-			buf.WriteString(fmt.Sprintf("%8sAttributes:\n", ""))
+			fmt.Fprintf(buf, "%8sAttributes:\n", "")
 			for _, ext := range unknownExts {
-				buf.WriteString(fmt.Sprintf("%12s%s:", "", ext.Id.String()))
+				fmt.Fprintf(buf, "%12s%s:", "", ext.Id.String())
 				if ext.Critical {
-					buf.WriteString(" critical\n")
+					fmt.Fprint(buf, " critical\n")
 				} else {
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				}
 				value := bytes.Runes(ext.Value)
 				sanitized := make([]rune, len(value))
@@ -1486,23 +1490,23 @@ func CertificateRequestText(csr *x509.CertificateRequest) (string, error) {
 						sanitized[i] = '.'
 					}
 				}
-				buf.WriteString(fmt.Sprintf("%16s%s\n", "", string(sanitized)))
+				fmt.Fprintf(buf, "%16s%s\n", "", string(sanitized))
 				if hasSpecialChar {
-					buf.WriteString(fmt.Sprintf("%16s", ""))
+					fmt.Fprintf(buf, "%16s", "")
 					for i, b := range ext.Value {
-						buf.WriteString(fmt.Sprintf("%02x", b))
+						fmt.Fprintf(buf, "%02x", b)
 						if i != len(ext.Value)-1 {
-							buf.WriteString(":")
+							fmt.Fprint(buf, ":")
 						}
 					}
-					buf.WriteString("\n")
+					fmt.Fprint(buf, "\n")
 				}
 			}
 		}
 	}
 
 	// Signature
-	printSignature(csr.SignatureAlgorithm, csr.Signature, &buf)
+	printSignature(csr.SignatureAlgorithm, csr.Signature, buf)
 
 	return buf.String(), nil
 }

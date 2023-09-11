@@ -128,7 +128,7 @@ func mustParseCertificate(t *testing.T, filename string) *x509.Certificate {
 		t.Fatalf("failed to read %s: %v", filename, err)
 	}
 	block, rest := pem.Decode(pemData)
-	if block == nil || len(rest) > 0 {
+	if block == nil || len(rest) > 0 || block.Bytes == nil {
 		t.Fatalf("failed to decode PEM in %s", filename)
 	}
 	cert, err := x509.ParseCertificate(block.Bytes)
@@ -144,7 +144,7 @@ func mustParseCertificateRequest(t *testing.T, filename string) *x509.Certificat
 		t.Fatalf("failed to read %s: %v", filename, err)
 	}
 	block, rest := pem.Decode(pemData)
-	if block == nil || len(rest) > 0 {
+	if block == nil || len(rest) > 0 || block.Bytes == nil {
 		t.Fatalf("failed to decode PEM in %s", filename)
 	}
 	cr, err := x509.ParseCertificateRequest(block.Bytes)
