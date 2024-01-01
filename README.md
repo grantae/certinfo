@@ -56,15 +56,15 @@ import (
   "crypto/x509"
   "encoding/pem"
   "fmt"
-  "io/ioutil"
   "log"
+  "os"
 
   "github.com/smallstep/certinfo"
 )
 
 func main() {
   // Read and parse the PEM certificate file
-  pemData, err := ioutil.ReadFile("cert.pem")
+  pemData, err := os.ReadFile("cert.pem")
   if err != nil {
     log.Fatal(err)
   }
