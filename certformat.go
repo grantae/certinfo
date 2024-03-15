@@ -72,7 +72,7 @@ func (c *certificateShort) String() string {
 	var buf formatBuffer
 	buf.Writef("X.509v3 %s Certificate (%s) [Serial: %s]\n", c.Type, c.PublicKeyAlgorithm, c.SerialNumber)
 	sans := c.SANs
-	if len(c.Subject) > 0 {
+	if c.Subject != "" {
 		sans = append([]string{c.Subject}, sans...)
 	}
 	if len(sans) == 0 {
@@ -118,7 +118,7 @@ func (c *certificateRequestShort) String() string {
 	var buf formatBuffer
 	buf.Writef("X.509v3 Certificate Signing Request (%s)\n", c.PublicKeyAlgorithm)
 	sans := c.SANs
-	if len(c.Subject) > 0 {
+	if c.Subject != "" {
 		sans = append([]string{c.Subject}, sans...)
 	}
 	if len(sans) == 0 {
